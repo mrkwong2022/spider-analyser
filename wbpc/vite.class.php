@@ -1,4 +1,7 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly.
+}
 
 class WB_Vite
 {
@@ -42,36 +45,36 @@ class WB_Vite
       return '';
     }
 
-    if (self::isDev($entry)) {
-      return '<script type="module" src="' . self::VITE_HOST . '/@vite/client"></script>' . "\n"
-        . '<script type="module" src="' . $url . '"></script>';
+    if (static::isDev($entry)) { // Changed self:: to static::
+      return '<script type="module" src="' . esc_url( static::VITE_HOST . '/@vite/client' ) . '"></script>' . "\n"
+        . '<script type="module" src="' . esc_url( $url ) . '"></script>';
     }
 
-    return '<script type="module" src="' . $url . '"></script>';
+    return '<script type="module" src="' . esc_url( $url ) . '"></script>';
   }
 
   public static function jsPreloadImports(string $entry, string $output_dir): string
   {
-    if (self::isDev($entry)) {
+    if (static::isDev($entry)) { // Changed self:: to static::
       return '';
     }
 
     $res = '';
-    foreach (self::importsUrls($entry, $output_dir) as $url) {
-      $res .= '<link rel="modulepreload" href="' . $url . '">';
+    foreach (static::importsUrls($entry, $output_dir) as $url) { // Changed self:: to static::
+      $res .= '<link rel="modulepreload" href="' . esc_url( $url ) . '">';
     }
     return $res;
   }
 
   public static function cssTag(string $entry, string $output_dir): string
   {
-    if (self::isDev($entry)) {
+    if (static::isDev($entry)) { // Changed self:: to static::
       return '';
     }
 
     $tags = '';
-    foreach (self::cssUrls($entry, $output_dir) as $url) {
-      $tags .= '<link rel="stylesheet" href="' . $url . '">';
+    foreach (static::cssUrls($entry, $output_dir) as $url) { // Changed self:: to static::
+      $tags .= '<link rel="stylesheet" href="' . esc_url( $url ) . '">';
     }
     return $tags;
   }
