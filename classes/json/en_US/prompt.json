@@ -1,0 +1,75 @@
+{
+  "log": {
+    "content": [
+      "<b>Focus on 301/302 and 404 status codes in the spider logs of major search engines (e.g., Baidu, Google, Bing).</b>",
+      "Refer to the <a href=\"https://www.wbolt.com/how-to-analyze-spider-log.html?utm_source=spider-analyser\" target=\"_blank\">detailed tutorial</a> for spider log analysis.",
+      "Update internal links with 301/302 status codes to point directly to the target URL.",
+      "Fix or redirect internal links with 404 status codes to the correct URL.",
+      "Redirection can be implemented using the <a href=\"https://www.wbolt.com/plugins/sst?utm_source=spider-analyser\" target=\"_blank\">Smart SEO Tool plugin</a> or <a href=\"https://www.wbolt.com/301-redirects.html?utm_source=spider-analyser\" target=\"_blank\">configured manually</a>."
+    ]
+  },
+  "path": {
+    "content": [
+      "Focus on major search engines crawling article pages and the <a href=\"https://www.wbolt.com/wordpress-sitemap.html?utm_source=spider-analyser\" target=\"_blank\">Sitemap</a>.",
+      "Continuously update and publish high-quality content to attract search engine crawlers.",
+      "Use the <a href=\"https://www.wbolt.com/plugins/sst?utm_source=spider-analyser\" target=\"_blank\">Smart SEO Tool plugin</a> or similar plugins to configure sitemap generation and exclude unimportant link types.",
+      "For frequently crawled article pages by major search engines, consider <a href=\"https://www.wbolt.com/internal-links-optimization.html?utm_source=spider-analyser\" target=\"_blank\">adding internal links</a> appropriately."
+    ]
+  },
+  "post": {
+    "content": [
+      "Spider visiting frequency directly reflects the search engines' perception of a URL. The higher the frequency, the greater the chance of indexing the URL.",
+      "For URLs with low spider visiting frequency and not indexed, try <a href=\"https://www.wbolt.com/republishing-content.html\" target=\"_blank\">content rebuilding</a> and <a href=\"https://www.wbolt.com/internal-links-optimization.html\" target=\"_blank\">increase internal links</a>.",
+      "Minimize the number of links pointing to other websites in articles, or consider adding <a href=\"https://www.wbolt.com/what-is-nofollow.html\" target=\"_blank\">nofollow attributes</a> to external links.",
+      "Introduce indexing status data through the <a href=\"https://www.wbolt.com/plugins/bsl-pro?utm_source=spider-analyser\" target=\"_blank\">Search Push Plugin</a>. It is recommended to use both plugins together for better link pushing and crawler analysis."
+    ]
+  },
+  "list-ip": {
+    "content": [
+      "Before intercepting IP segments, ensure the spiders from the segment are not necessary for statistics. To cancel interception, go to the <router-link to=\"list-stop\">Spider Block List</router-link> and remove it.",
+      "Pro version users can directly enable <router-link to=\"list-stop\">Smart Intercept</router-link> to avoid manual interception."
+    ]
+  },
+  "list-spider": {
+    "content": [
+      "Spider data is sourced from the <a href=\"https://www.wbolt.com/tools-spider?utm_source=spider-analyser\" target=\"_blank\">Spider Query Tool</a>.",
+      "Some uncommon spiders, especially fake spiders, may appear with their type listed as \"unknown.\" Do not use this as the sole criterion for determining whether a spider is fake.",
+      "For spiders that do not need to be recorded, choose to ignore or intercept to save server resources."
+    ]
+  },
+  "list-stop": {
+    "content": [
+      "<b>Before enabling Smart Intercept, ensure the site is not using a full-site CDN as this may misidentify real spiders.</b>",
+      "Some fake spiders may disguise themselves as real spiders. Use IP-based interception to block fake spiders.",
+      "When blocking by spider name, ensure the name is entered accurately (case-sensitive). Otherwise, interception may fail.",
+      "Spider interception applies only to front-end page crawling spiders, not back-end data crawling spiders."
+    ]
+  },
+  "list-suspected": {
+    "content": [
+      "Suspected fake spider data is sourced from the <a href=\"https://www.wbolt.com/tools-spider&utm_source=spider-analyser\" target=\"_blank\">Spider Query Tool</a> for reference only.",
+      "If your site uses a full-site CDN (e.g., Cloudflare), real spiders may also be identified as fake spiders. Full-site CDN sites should use CDN route IPs to further determine spider authenticity."
+    ]
+  },
+  "setting-list": {
+    "content": [
+      "If a spider does not need to be tracked, its status can be set to \"Ignore\" through the operation menu.",
+      "For non-essential spiders, it is recommended to intercept them directly to save server resources.",
+      "The calculation range for this list is based on spider data from the past 7 days.",
+      "Spider name and type data is sourced from the <a href=\"https://www.wbolt.com/tools-spider?utm_source=spider-analyser\" target=\"_blank\">Spider Query Tool</a>."
+    ]
+  },
+  "setting-rule": {
+    "content": [
+      "Wildcard rules are supported, such as <code>/mp-api/*</code>.",
+      "For link types different from the preset, you can add custom rules to include them; otherwise, modify and add based on the preset types."
+    ]
+  },
+  "setting-log": {
+    "content": [
+      "The log retention period can be customized based on actual needs. Generally, a 30-day retention period is recommended. If the data volume is very large, reduce it to 7 days.",
+      "Log updates need to be written into the database. To ensure server performance, consider hourly (default) or even daily updates.",
+      "If the spider log data volume is enormous, backup and delete logs while ignoring and intercepting unnecessary spiders."
+    ]
+  }
+}

@@ -1,0 +1,146 @@
+[
+  {
+    "label": "蜘蛛今日概況",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛統計趨勢圖",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Top10統計表",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛訪問日誌",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛清單列表",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛訪問路徑",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛記錄管理",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "連結型別規則設定",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "日誌週期設定",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "日誌備份刪除",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "自定義蜘蛛設定",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛忽略設定",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛IP段列表",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "無",
+      "pro": 1
+    }
+  },
+  {
+    "label": "偽蜘蛛判斷",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "無",
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛（智慧）攔截",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "無",
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛文章爬取明細",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "無",
+      "pro": 1
+    }
+  }
+]

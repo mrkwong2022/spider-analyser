@@ -1,0 +1,75 @@
+{
+  "log": {
+    "content": [
+      "<b>應重點關注301/302，以及404狀態碼主流搜尋引擎（如百度、Google和必應）的蜘蛛日誌。</b>",
+      "蜘蛛日誌分析工作，請參閱<a href=\"https://www.wbolt.com/tw/how-to-analyze-spider-log.html?utm_source=spider-analyser\" target=\"_blank\">詳細教程</a>。",
+      "301/302狀態碼內部鏈接，盡可能修改為最終目標鏈接。",
+      "404狀態碼內部鏈接，應修復或重新導向為正確鏈接。",
+      "重新導向可安裝<a href=\"https://www.wbolt.com/tw/plugins/sst?utm_source=spider-analyser\" target=\"_blank\">Smart SEO Tool外掛</a>實現或<a href=\"https://www.wbolt.com/tw/301-redirects.html?utm_source=spider-analyser\" target=\"_blank\">手動配置</a>。"
+    ]
+  },
+  "path": {
+    "content": [
+      "重點關注主流搜尋引擎對文章頁及<a href=\"https://www.wbolt.com/tw/wordpress-sitemap.html?utm_source=spider-analyser\" target=\"_blank\">Sitemap</a>的訪問爬取。",
+      "持續更新發布高品質文章內容，以吸引搜尋引擎爬取。",
+      "安裝<a href=\"https://www.wbolt.com/tw/plugins/sst?utm_source=spider-analyser\" target=\"_blank\">Smart SEO Tool外掛</a>或其他類似外掛，通過Sitemap生成配置剔除不重要的鏈接類型。",
+      "針對主流搜尋引擎高頻次爬取文章頁，應該適當地<a href=\"https://www.wbolt.com/tw/internal-links-optimization.html?utm_source=spider-analyser\" target=\"_blank\">添加內部連結</a>。"
+    ]
+  },
+  "post": {
+    "content": [
+      "蜘蛛訪問量直接體現搜尋引擎對URL的嗅覺，蜘蛛訪問頻率越高，URL被收錄索引的機率越大。",
+      "蜘蛛訪問量頻率低且未收錄文章，可以嘗試<a href=\"https://www.wbolt.com/tw/republishing-content.html\" target=\"_blank\">內容重建</a>及<a href=\"https://www.wbolt.com/tw/internal-links-optimization.html\" target=\"_blank\">增加內部連結數</a>。",
+      "盡可能降低文章指向其他網站的鏈接數，或為其<a href=\"https://www.wbolt.com/tw/what-is-nofollow.html\" target=\"_blank\">增加nofollow屬性</a>。",
+      "收錄狀態數據通過<a href=\"https://www.wbolt.com/tw/plugins/bsl-pro?utm_source=spider-analyser\" target=\"_blank\">搜尋推送外掛</a>導入，建議站長結合這兩個外掛做好連結推送和爬蟲分析工作。"
+    ]
+  },
+  "list-ip": {
+    "content": [
+      "IP段攔截前，請確保該IP段的蜘蛛均是不需要統計的，若要取消攔截，請通過<router-link to=\"list-stop\">蜘蛛攔截</router-link>清單取消。",
+      "Pro版本用戶可以考慮直接啟用<router-link to=\"list-stop\">智能攔截</router-link>，則無需執行手動攔截操作。"
+    ]
+  },
+  "list-spider": {
+    "content": [
+      "蜘蛛清單數據引自<a href=\"https://www.wbolt.com/tw/tools-spider?utm_source=spider-analyser\" target=\"_blank\">蜘蛛查詢工具</a>。",
+      "部分不常見蜘蛛尤其是偽蜘蛛，類型可能顯示為未知。但站長切勿以此為標準判別該蜘蛛是否為偽蜘蛛。",
+      "對於無需記錄的蜘蛛爬蟲，應選擇忽略或者攔截，避免浪費伺服器資源。"
+    ]
+  },
+  "list-stop": {
+    "content": [
+      "<b>開啟智能攔截前，需確定未採用全站CDN，否則可能誤判攔截真實蜘蛛。</b>",
+      "部分偽蜘蛛可能會偽裝成真實蜘蛛名稱，對於偽蜘蛛攔截請使用IP攔截方式。",
+      "按蜘蛛名稱攔截，需準確填寫蜘蛛名稱，區分大小寫，否則可能會攔截失敗。",
+      "蜘蛛攔截僅對前端頁面爬取蜘蛛有效，對後端數據爬取蜘蛛無效。"
+    ]
+  },
+  "list-suspected": {
+    "content": [
+      "疑似偽蜘蛛數據參考<a href=\"https://www.wbolt.com/tw/tools-spider&utm_source=spider-analyser\" target=\"_blank\">蜘蛛查詢工具</a>，僅供參考。",
+      "如果您的網站啟用了全站CDN（如Cloudflare），真實蜘蛛也可能被判斷為偽蜘蛛。全站CDN站點應結合CDN路由IP進一步判斷蜘蛛的真假。"
+    ]
+  },
+  "setting-list": {
+    "content": [
+      "如無需統計某一蜘蛛，可以通過操作修改該蜘蛛狀態為忽略即可。",
+      "對於一些非必要蜘蛛，應直接攔截，節省伺服器資源。",
+      "此清單的占比計算範圍：最近7天的蜘蛛數據。",
+      "蜘蛛名稱及類型數據引自<a href=\"https://www.wbolt.com/tw/tools-spider?utm_source=spider-analyser\" target=\"_blank\">蜘蛛查詢工具</a>。"
+    ]
+  },
+  "setting-rule": {
+    "content": [
+      "支持通配符形式鏈接規則，如<code>/mp-api/*</code>",
+      "如有不同於預設的鏈接類型，可以通過添加自定義來新增；否則建議在預設類型基礎上修改新增。"
+    ]
+  },
+  "setting-log": {
+    "content": [
+      "日誌保留週期可根據自身實際情況選擇，一般保留30天即可。如數據量非常大，改為近7天亦可。",
+      "日誌更新方式需寫入資料庫，為保障伺服器效能，可考慮每小時（預設）甚至每天更新。",
+      "如蜘蛛日誌數據量非常龐大，建議備份日誌並刪除，忽略及攔截不必要的蜘蛛。"
+    ]
+  }
+}

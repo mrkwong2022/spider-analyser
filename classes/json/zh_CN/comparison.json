@@ -1,0 +1,146 @@
+[
+  {
+    "label": "蜘蛛今日概况",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛统计趋势图",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Top10统计表",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛访问日志",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛清单列表",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛访问路径",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛记录管理",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "链接类型规则设置",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "日志周期设置",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "日志备份删除",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "自定义蜘蛛设置",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛忽略设置",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛IP段列表",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "无",
+      "pro": 1
+    }
+  },
+  {
+    "label": "伪蜘蛛判断",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "无",
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛（智能）拦截",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "无",
+      "pro": 1
+    }
+  },
+  {
+    "label": "蜘蛛文章爬取明细",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "无",
+      "pro": 1
+    }
+  }
+]

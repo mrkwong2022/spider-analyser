@@ -1,0 +1,146 @@
+[
+  {
+    "label": "Overview",
+    "slug": "",
+    "remark": "Overview for spiders",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Trend chart",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Top 10 list",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Spider log",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Spider list",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Access path",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Record management",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Rule settings",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Log settings",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Backup & Delete",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Custom spider",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "Spider ignores settings",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": 1,
+      "pro": 1
+    }
+  },
+  {
+    "label": "IP segment list",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "None",
+      "pro": 1
+    }
+  },
+  {
+    "label": "False spiders judgment",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "None",
+      "pro": 1
+    }
+  },
+  {
+    "label": "Auto-block",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "None",
+      "pro": 1
+    }
+  },
+  {
+    "label": "Crawl detail",
+    "slug": "",
+    "remark": "",
+    "available": {
+      "free": "None",
+      "pro": 1
+    }
+  }
+]

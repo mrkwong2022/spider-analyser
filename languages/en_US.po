@@ -1,0 +1,1657 @@
+# Copyright (C) 2025 wb-spider-analyser
+# This file is distributed under the same license as the wb-spider-analyser package.
+msgid ""
+msgstr ""
+"Project-Id-Version: 2.1.0\n"
+"POT-Creation-Date: 2025-04-23 10:12+0000\n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-KeywordsList: __;_e;_ex:1,2c;_n:1,2;_n_noop:1,2;"
+"_nx:1,2,4c;_nx_noop:1,2,3c;_x:1,2c;esc_attr__;esc_attr_e;"
+"esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Generator: Poedit 3.4.4\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: *.js\n"
+
+#: classes/admin.class.php:70
+msgctxt "spider type"
+msgid "Feed爬取类"
+msgstr ""
+
+#: classes/admin.class.php:71
+msgctxt "spider type"
+msgid "SEO/SEM类"
+msgstr ""
+
+#: classes/admin.class.php:72
+msgctxt "spider type"
+msgid "工具类"
+msgstr ""
+
+#: classes/admin.class.php:73
+msgctxt "spider type"
+msgid "搜索引擎"
+msgstr ""
+
+#: classes/admin.class.php:74
+msgctxt "spider type"
+msgid "漏洞扫描类"
+msgstr ""
+
+#: classes/admin.class.php:75
+msgctxt "spider type"
+msgid "病毒扫描类"
+msgstr ""
+
+#: classes/admin.class.php:76
+msgctxt "spider type"
+msgid "网站截图类"
+msgstr ""
+
+#: classes/admin.class.php:77
+msgctxt "spider type"
+msgid "网站爬虫类"
+msgstr ""
+
+#: classes/admin.class.php:78
+msgctxt "spider type"
+msgid "网站监控"
+msgstr ""
+
+#: classes/admin.class.php:79
+msgctxt "spider type"
+msgid "速度测试类"
+msgstr ""
+
+#: classes/admin.class.php:80
+msgctxt "spider type"
+msgid "链接检测类"
+msgstr ""
+
+#: classes/admin.class.php:81
+msgctxt "spider type"
+msgid "其他"
+msgstr ""
+
+#: classes/admin.class.php:88
+msgctxt "url类型"
+msgid "首页"
+msgstr ""
+
+#: classes/admin.class.php:89
+msgctxt "url类型"
+msgid "文章页"
+msgstr ""
+
+#: classes/admin.class.php:90
+msgctxt "url类型"
+msgid "独立页"
+msgstr ""
+
+#: classes/admin.class.php:91
+msgctxt "url类型"
+msgid "分类页"
+msgstr ""
+
+#: classes/admin.class.php:92
+msgctxt "url类型"
+msgid "标签页"
+msgstr ""
+
+#: classes/admin.class.php:93
+msgctxt "url类型"
+msgid "搜索页"
+msgstr ""
+
+#: classes/admin.class.php:94
+msgctxt "url类型"
+msgid "作者页"
+msgstr ""
+
+#: classes/admin.class.php:95
+msgctxt "url类型"
+msgid "Feed"
+msgstr ""
+
+#: classes/admin.class.php:96
+msgctxt "url类型"
+msgid "SiteMap"
+msgstr ""
+
+#: classes/admin.class.php:97
+msgctxt "url类型"
+msgid "API"
+msgstr ""
+
+#: classes/admin.class.php:98
+msgctxt "url类型"
+msgid "其他"
+msgstr ""
+
+#: classes/admin.class.php:142
+msgctxt "btn"
+msgid "插件主页"
+msgstr ""
+
+#: classes/admin.class.php:143
+msgctxt "btn"
+msgid "说明文档"
+msgstr ""
+
+#: classes/admin.class.php:144
+msgctxt "btn"
+msgid "反馈"
+msgstr ""
+
+#: classes/spider.class.php:157
+msgid "有新版本可用。"
+msgstr ""
+
+#: classes/spider.class.php:158
+msgctxt "%s产品名"
+msgid "查看 %s 版本"
+msgstr ""
+
+#: classes/spider.class.php:158
+msgid "查看版本 %s 详情"
+msgstr ""
+
+#: classes/spider.class.php:159
+msgctxt "or"
+msgid "或"
+msgstr ""
+
+#: classes/spider.class.php:159
+msgctxt "%s产品名"
+msgid "现在更新%s"
+msgstr ""
+
+#: classes/spider.class.php:159
+msgctxt "link"
+msgid "现在更新"
+msgstr ""
+
+#: classes/spider.class.php:216
+msgctxt "产品名"
+msgid "Spider Analyser-蜘蛛分析插件"
+msgstr ""
+
+#: classes/spider.class.php:1254
+msgctxt "ajax返回提示"
+msgid "不合法请求，参数无效"
+msgstr ""
+
+#: classes/spider.class.php:1260, classes/spider.class.php:1265
+msgctxt "ajax返回提示"
+msgid "校验失败，请稍后再试（错误代码001）"
+msgstr ""
+
+#: classes/spider.class.php:1272
+msgctxt "ajax返回提示"
+msgid "发生异常错误，联系技术支持（错误代码 010）"
+msgstr ""
+
+#: classes/spider.class.php:1279
+msgctxt "ajax返回提示"
+msgid "发生异常错误，联系技术支持（错误代码011）"
+msgstr ""
+
+#: classes/spider.class.php:1283
+msgctxt "ajax返回提示"
+msgid "校验失败，请稍后再试（错误代码004)"
+msgstr ""
+
+#: classes/spider.class.php:1293
+msgctxt "ajax返回提示"
+msgid "插件配置参数错误，联系技术支持，错误代码："
+msgstr ""
+
+#: classes/spider.class.php:1296
+msgctxt "ajax返回提示"
+msgid "输入key无效，请输入正确key（错误代码200）"
+msgstr ""
+
+#: classes/spider.class.php:1299
+msgctxt "ajax返回提示"
+msgid "key使用次数超出限制范围（错误代码201）"
+msgstr ""
+
+#: classes/spider.class.php:1304
+msgctxt "ajax返回提示"
+msgid "校验服务器异常，联系技术支持，错误代码："
+msgstr ""
+
+#: classes/spider.class.php:1307
+msgctxt "ajax返回提示"
+msgid "发生异常错误，联系技术支持，错误代码："
+msgstr ""
+
+#: classes/spider.class.php:3061, classes/spider.class.php:3062
+msgctxt "菜单名称"
+msgid "蜘蛛分析"
+msgstr ""
+
+#: classes/spider.class.php:3070
+msgctxt "菜单名称"
+msgid "蜘蛛概况"
+msgstr ""
+
+#: classes/spider.class.php:3074
+msgctxt "菜单名称"
+msgid "蜘蛛日志"
+msgstr ""
+
+#: classes/spider.class.php:3078
+msgctxt "菜单名称"
+msgid "蜘蛛列表"
+msgstr ""
+
+#: classes/spider.class.php:3082
+msgctxt "菜单名称"
+msgid "访问路径"
+msgstr ""
+
+#: classes/spider.class.php:3086
+msgctxt "菜单名称"
+msgid "文章爬取"
+msgstr ""
+
+#: classes/spider.class.php:3090
+msgctxt "菜单名称"
+msgid "插件设置"
+msgstr ""
+
+#: classes/spider.class.php:3099, classes/spider.class.php:3099
+msgctxt "菜单名称"
+msgid "升至Pro版"
+msgstr ""
+
+#: classes/spider.class.php:3113
+msgctxt "link"
+msgid "升至Pro版"
+msgstr ""
+
+#: classes/spider.class.php:3116
+msgctxt "link"
+msgid "设置"
+msgstr ""
+
+#: classes/spider.class.php:3189, classes/spider.class.php:3225
+msgctxt "筛选选项"
+msgid "所有时间"
+msgstr ""
+
+#: classes/spider.class.php:3193, classes/spider.class.php:3229
+msgctxt "筛选选项"
+msgid "今天"
+msgstr ""
+
+#: classes/spider.class.php:3197, classes/spider.class.php:3233
+msgctxt "筛选选项"
+msgid "近7天"
+msgstr ""
+
+#: classes/spider.class.php:3201, classes/spider.class.php:3237
+msgctxt "筛选选项"
+msgid "近30天"
+msgstr ""
+
+#: classes/spider.class.php:3253
+msgctxt "spider type"
+msgid "全部"
+msgstr ""
+
+#: classes/spider.class.php:3254
+msgctxt "spider type"
+msgid "名称"
+msgstr ""
+
+#: classes/spider.class.php:3255
+msgctxt "spider type"
+msgid "IP"
+msgstr ""
+
+#: classes/spider.class.php:3256
+msgctxt "spider type"
+msgid "IP段"
+msgstr ""
+
+#: classes/spider.class.php:3257
+msgctxt "spider type"
+msgid "名称及IP"
+msgstr ""
+
+#: classes/spider.class.php:3258
+msgctxt "spider type"
+msgid "自定义"
+msgstr ""
+
+#: classes/spider.class.php:3261
+msgctxt "spider path"
+msgid "未知"
+msgstr ""
+
+#: classes/spider.class.php:3262
+msgctxt "spider path"
+msgid "蜘蛛日志"
+msgstr ""
+
+#: classes/spider.class.php:3263
+msgctxt "spider path"
+msgid "蜘蛛清单"
+msgstr ""
+
+#: classes/spider.class.php:3264
+msgctxt "spider path"
+msgid "蜘蛛IP段"
+msgstr ""
+
+#: classes/spider.class.php:3265
+msgctxt "spider path"
+msgid "疑似伪蜘蛛"
+msgstr ""
+
+#: classes/spider.class.php:3266
+msgctxt "spider path"
+msgid "自定义"
+msgstr ""
+
+#: classes/spider.class.php:3267
+msgctxt "spider path"
+msgid "智能拦截"
+msgstr ""
+
+#: classes/spider.class.php:3268
+msgctxt "spider path"
+msgid "记录管理"
+msgstr ""
+
+#: classes/_localize.php:7
+msgctxt "vue部分"
+msgid "保存成功"
+msgstr ""
+
+#: classes/_localize.php:8
+msgctxt "vue部分"
+msgid "未选择项目"
+msgstr ""
+
+#: classes/_localize.php:9
+msgctxt "vue部分"
+msgid ""
+"批量忽略所选蜘蛛，将不再记录此蜘蛛日志。可通过插件设置恢复统"
+"计。"
+msgstr ""
+
+#: classes/_localize.php:10
+msgctxt "vue部分"
+msgid "执行中"
+msgstr ""
+
+#: classes/_localize.php:11
+msgctxt "vue部分"
+msgid "已忽略所选记录"
+msgstr ""
+
+#: classes/_localize.php:12
+msgctxt "vue部分"
+msgid "该功能仅Pro版本提供"
+msgstr ""
+
+#: classes/_localize.php:13
+msgctxt "vue部分"
+msgid "激活Pro版"
+msgstr ""
+
+#: classes/_localize.php:14
+msgctxt "vue部分"
+msgid "取消"
+msgstr ""
+
+#: classes/_localize.php:15
+msgctxt "vue部分"
+msgid "批量拦截所选蜘蛛IP？可通过蜘蛛拦截列表移除。"
+msgstr ""
+
+#: classes/_localize.php:16
+msgctxt "vue部分"
+msgid "已添加所选至蜘蛛拦截清单"
+msgstr ""
+
+#: classes/_localize.php:17
+msgctxt "vue部分"
+msgid "操作成功"
+msgstr ""
+
+#: classes/_localize.php:18
+msgctxt "vue部分"
+msgid "获取PRO版本"
+msgstr ""
+
+#: classes/_localize.php:19
+msgctxt "vue部分"
+msgid "激活PRO版本即可使用"
+msgstr ""
+
+#: classes/_localize.php:20
+msgctxt "vue部分"
+msgid "所有蜘蛛"
+msgstr ""
+
+#: classes/_localize.php:21
+msgctxt "vue部分"
+msgid "所有时间"
+msgstr ""
+
+#: classes/_localize.php:22
+msgctxt "vue部分"
+msgid "输入蜘蛛名称"
+msgstr ""
+
+#: classes/_localize.php:23
+msgctxt "vue部分"
+msgid "筛选"
+msgstr ""
+
+#: classes/_localize.php:24
+msgctxt "vue部分"
+msgid "暂无数据"
+msgstr ""
+
+#: classes/_localize.php:25
+msgctxt "vue部分"
+msgid "蜘蛛名称"
+msgstr ""
+
+#: classes/_localize.php:26
+msgctxt "vue部分"
+msgid "详情"
+msgstr ""
+
+#: classes/_localize.php:27
+msgctxt "vue部分"
+msgid "占比"
+msgstr ""
+
+#: classes/_localize.php:28
+msgctxt "vue部分"
+msgid "IP段"
+msgstr ""
+
+#: classes/_localize.php:29
+msgctxt "vue部分"
+msgid "拦截"
+msgstr ""
+
+#: classes/_localize.php:30
+msgctxt "vue部分"
+msgid "操作"
+msgstr ""
+
+#: classes/_localize.php:31
+msgctxt "vue部分"
+msgid "批量操作"
+msgstr ""
+
+#: classes/_localize.php:32
+msgctxt "vue部分"
+msgid "应用"
+msgstr ""
+
+#: classes/_localize.php:33
+msgctxt "vue部分"
+msgid "拦截IP段为%s的蜘蛛？可通过蜘蛛拦截列表移除。"
+msgstr ""
+
+#: classes/_localize.php:34
+msgctxt "vue部分"
+msgid "所有类型"
+msgstr ""
+
+#: classes/_localize.php:35
+msgctxt "vue部分"
+msgid "今天"
+msgstr ""
+
+#: classes/_localize.php:36
+msgctxt "vue部分"
+msgid "未知类型"
+msgstr ""
+
+#: classes/_localize.php:37
+msgctxt "vue部分"
+msgid "最近爬取"
+msgstr ""
+
+#: classes/_localize.php:38
+msgctxt "vue部分"
+msgid "忽略"
+msgstr ""
+
+#: classes/_localize.php:39
+msgctxt "vue部分"
+msgid "了解更多"
+msgstr ""
+
+#: classes/_localize.php:40
+msgctxt "vue部分"
+msgid ""
+"将%s蜘蛛列为忽略列表，将不再记录此蜘蛛日志。可通过插件设置恢"
+"复统计。"
+msgstr ""
+
+#: classes/_localize.php:41
+msgctxt "vue部分"
+msgid "确认将所选移出拦截清单？"
+msgstr ""
+
+#: classes/_localize.php:42
+msgctxt "vue部分"
+msgid "已将所选项移出拦截清单"
+msgstr ""
+
+#: classes/_localize.php:43
+msgctxt "vue部分"
+msgid "确认移出？"
+msgstr ""
+
+#: classes/_localize.php:44
+msgctxt "vue部分"
+msgid "已移出"
+msgstr ""
+
+#: classes/_localize.php:45
+msgctxt "vue部分"
+msgid "填写拦截蜘蛛名称或IP"
+msgstr ""
+
+#: classes/_localize.php:46
+msgctxt "vue部分"
+msgid "将执行清除所有蜘蛛拦截记录操作？"
+msgstr ""
+
+#: classes/_localize.php:47
+msgctxt "vue部分"
+msgid "清除成功"
+msgstr ""
+
+#: classes/_localize.php:48
+msgctxt "vue部分"
+msgid ""
+"在开启智能拦截前，请确保网站未启用全站CDN（如cloudflare），以"
+"免误判拦截。"
+msgstr ""
+
+#: classes/_localize.php:49
+msgctxt "vue部分"
+msgid "确认关闭智能拦截功能？"
+msgstr ""
+
+#: classes/_localize.php:50
+msgctxt "vue部分"
+msgid "确认"
+msgstr ""
+
+#: classes/_localize.php:51
+msgctxt "vue部分"
+msgid "自定义"
+msgstr ""
+
+#: classes/_localize.php:52
+msgctxt "vue部分"
+msgid "名称"
+msgstr ""
+
+#: classes/_localize.php:53
+msgctxt "vue部分"
+msgid "及"
+msgstr ""
+
+#: classes/_localize.php:54
+msgctxt "vue部分"
+msgid "IP"
+msgstr ""
+
+#: classes/_localize.php:55
+msgctxt "vue部分"
+msgid "智能拦截"
+msgstr ""
+
+#: classes/_localize.php:56
+msgctxt "vue部分"
+msgid "拦截方式"
+msgstr ""
+
+#: classes/_localize.php:57
+msgctxt "vue部分"
+msgid "所有路径"
+msgstr ""
+
+#: classes/_localize.php:58
+msgctxt "vue部分"
+msgid "输入名称或者IP地址"
+msgstr ""
+
+#: classes/_localize.php:59
+msgctxt "vue部分"
+msgid "拦截名称"
+msgstr ""
+
+#: classes/_localize.php:60
+msgctxt "vue部分"
+msgid "拦截IP/IP段"
+msgstr ""
+
+#: classes/_localize.php:61
+msgctxt "vue部分"
+msgid "路径"
+msgstr ""
+
+#: classes/_localize.php:62
+msgctxt "vue部分"
+msgid "移出拦截"
+msgstr ""
+
+#: classes/_localize.php:63
+msgctxt "vue部分"
+msgid "填写拦截蜘蛛名称"
+msgstr ""
+
+#: classes/_localize.php:64
+msgctxt "vue部分"
+msgid "填写拦截蜘蛛IP"
+msgstr ""
+
+#: classes/_localize.php:65
+msgctxt "vue部分"
+msgid "保存"
+msgstr ""
+
+#: classes/_localize.php:66
+msgctxt "vue部分"
+msgid "一键清除"
+msgstr ""
+
+#: classes/_localize.php:67
+msgctxt "vue部分"
+msgid "添加"
+msgstr ""
+
+#: classes/_localize.php:68
+msgctxt "vue部分"
+msgid "移除"
+msgstr ""
+
+#: classes/_localize.php:69
+msgctxt "vue部分"
+msgid ""
+"开启智能拦截，会自动将疑似伪蜘蛛添加到蜘蛛拦截清单。请慎重启"
+"用该功能！"
+msgstr ""
+
+#: classes/_localize.php:70
+msgctxt "vue部分"
+msgid "已启用智能拦截功能，当前列表不记录伪蜘蛛数据。"
+msgstr ""
+
+#: classes/_localize.php:71
+msgctxt "vue部分"
+msgid "伪装名称"
+msgstr ""
+
+#: classes/_localize.php:72
+msgctxt "vue部分"
+msgid "IP地址"
+msgstr ""
+
+#: classes/_localize.php:73
+msgctxt "vue部分"
+msgid "查询"
+msgstr ""
+
+#: classes/_localize.php:74
+msgctxt "vue部分"
+msgid "所有状态码"
+msgstr ""
+
+#: classes/_localize.php:75
+msgctxt "vue部分"
+msgid "输入URL"
+msgstr ""
+
+#: classes/_localize.php:76
+msgctxt "vue部分"
+msgid "输入蜘蛛IP"
+msgstr ""
+
+#: classes/_localize.php:77
+msgctxt "vue部分"
+msgid "爬取URL"
+msgstr ""
+
+#: classes/_localize.php:78
+msgctxt "vue部分"
+msgid "查看"
+msgstr ""
+
+#: classes/_localize.php:79
+msgctxt "vue部分"
+msgid "蜘蛛IP"
+msgstr ""
+
+#: classes/_localize.php:80
+msgctxt "vue部分"
+msgid "访问时间"
+msgstr ""
+
+#: classes/_localize.php:81
+msgctxt "vue部分"
+msgid "状态码"
+msgstr ""
+
+#: classes/_localize.php:82
+msgctxt "vue部分"
+msgid "拦截IP为 %s 的蜘蛛？可通过蜘蛛拦截列表移除。"
+msgstr ""
+
+#: classes/_localize.php:83
+msgctxt "vue部分"
+msgid "加载中..."
+msgstr ""
+
+#: classes/_localize.php:84
+msgctxt "vue部分"
+msgid "访问路径"
+msgstr ""
+
+#: classes/_localize.php:85
+msgctxt "vue部分"
+msgid "类型:"
+msgstr ""
+
+#: classes/_localize.php:86
+msgctxt "vue部分"
+msgid "类型"
+msgstr ""
+
+#: classes/_localize.php:87
+msgctxt "vue部分"
+msgid "爬取次数"
+msgstr ""
+
+#: classes/_localize.php:88
+msgctxt "vue部分"
+msgid "爬取次数: %s"
+msgstr ""
+
+#: classes/_localize.php:89
+msgctxt "vue部分"
+msgid "占比: %s%"
+msgstr ""
+
+#: classes/_localize.php:90
+msgctxt "vue部分"
+msgid "未标记"
+msgstr ""
+
+#: classes/_localize.php:91
+msgctxt "vue部分"
+msgid "已收录"
+msgstr ""
+
+#: classes/_localize.php:92
+msgctxt "vue部分"
+msgid "未收录"
+msgstr ""
+
+#: classes/_localize.php:93
+msgctxt "vue部分"
+msgid "蜘蛛"
+msgstr ""
+
+#: classes/_localize.php:94
+msgctxt "vue部分"
+msgid "* 激活PRO版本即可使用"
+msgstr ""
+
+#: classes/_localize.php:95
+msgctxt "vue部分"
+msgid "所有文章"
+msgstr ""
+
+#: classes/_localize.php:96
+msgctxt "vue部分"
+msgid "输入文章标题/URL"
+msgstr ""
+
+#: classes/_localize.php:97
+msgctxt "vue部分"
+msgid "文章标题/URL"
+msgstr ""
+
+#: classes/_localize.php:98
+msgctxt "vue部分"
+msgid "文章"
+msgstr ""
+
+#: classes/_localize.php:99
+msgctxt "vue部分"
+msgid "发布时间"
+msgstr ""
+
+#: classes/_localize.php:100
+msgctxt "vue部分"
+msgid "收录状态"
+msgstr ""
+
+#: classes/_localize.php:101
+msgctxt "vue部分"
+msgid "收录状态由搜索推送插件引入，以源数据为准。"
+msgstr ""
+
+#: classes/_localize.php:102
+msgctxt "vue部分"
+msgid "蜘蛛访问量"
+msgstr ""
+
+#: classes/_localize.php:103
+msgctxt "vue部分"
+msgid ""
+"蜘蛛访问量直接体现搜索引擎对URL的嗅觉，蜘蛛访问频率越高，URL"
+"被收录索引几率越大。"
+msgstr ""
+
+#: classes/_localize.php:104
+msgctxt "vue部分"
+msgid "出链数"
+msgstr ""
+
+#: classes/_localize.php:105
+msgctxt "vue部分"
+msgid "出链数指当前页面指向网站其他页面的链接数量。"
+msgstr ""
+
+#: classes/_localize.php:106
+msgctxt "vue部分"
+msgid "入链数"
+msgstr ""
+
+#: classes/_localize.php:107
+msgctxt "vue部分"
+msgid "入链数指网站其他页面指向当前页面的链接数量。"
+msgstr ""
+
+#: classes/_localize.php:108
+msgctxt "vue部分"
+msgid "检测收录"
+msgstr ""
+
+#: classes/_localize.php:109
+msgctxt "vue部分"
+msgid "检测"
+msgstr ""
+
+#: classes/_localize.php:110
+msgctxt "vue部分"
+msgid "编辑"
+msgstr ""
+
+#: classes/_localize.php:111
+msgctxt "vue部分"
+msgid "拦截IP段为 %s 的蜘蛛？可通过蜘蛛拦截列表移除。"
+msgstr ""
+
+#: classes/_localize.php:112
+msgctxt "vue部分"
+msgid "蜘蛛访问量: %s"
+msgstr ""
+
+#: classes/_localize.php:113
+msgctxt "vue部分"
+msgid "出链数: %s"
+msgstr ""
+
+#: classes/_localize.php:114
+msgctxt "vue部分"
+msgid "入链数: %s"
+msgstr ""
+
+#: classes/_localize.php:115
+msgctxt "vue部分"
+msgid "发布时间: %s"
+msgstr ""
+
+#: classes/_localize.php:116
+msgctxt "vue部分"
+msgid "功能对比"
+msgstr ""
+
+#: classes/_localize.php:117
+msgctxt "vue部分"
+msgid "免费版"
+msgstr ""
+
+#: classes/_localize.php:118
+msgctxt "vue部分"
+msgid "专业版"
+msgstr ""
+
+#: classes/_localize.php:119
+msgctxt "vue部分"
+msgid "蜘蛛今日概况"
+msgstr ""
+
+#: classes/_localize.php:120
+msgctxt "vue部分"
+msgid "蜘蛛统计趋势图"
+msgstr ""
+
+#: classes/_localize.php:121
+msgctxt "vue部分"
+msgid "Top10统计表"
+msgstr ""
+
+#: classes/_localize.php:122
+msgctxt "vue部分"
+msgid "蜘蛛访问日志"
+msgstr ""
+
+#: classes/_localize.php:123
+msgctxt "vue部分"
+msgid "蜘蛛清单列表"
+msgstr ""
+
+#: classes/_localize.php:124
+msgctxt "vue部分"
+msgid "蜘蛛访问路径"
+msgstr ""
+
+#: classes/_localize.php:125
+msgctxt "vue部分"
+msgid "蜘蛛记录管理"
+msgstr ""
+
+#: classes/_localize.php:126
+msgctxt "vue部分"
+msgid "链接类型规则设置"
+msgstr ""
+
+#: classes/_localize.php:127
+msgctxt "vue部分"
+msgid "日志周期设置"
+msgstr ""
+
+#: classes/_localize.php:128
+msgctxt "vue部分"
+msgid "日志备份删除"
+msgstr ""
+
+#: classes/_localize.php:129
+msgctxt "vue部分"
+msgid "自定义蜘蛛设置"
+msgstr ""
+
+#: classes/_localize.php:130
+msgctxt "vue部分"
+msgid "蜘蛛忽略设置"
+msgstr ""
+
+#: classes/_localize.php:131
+msgctxt "vue部分"
+msgid "蜘蛛IP段列表"
+msgstr ""
+
+#: classes/_localize.php:132
+msgctxt "vue部分"
+msgid "无"
+msgstr ""
+
+#: classes/_localize.php:133
+msgctxt "vue部分"
+msgid "伪蜘蛛判断"
+msgstr ""
+
+#: classes/_localize.php:134
+msgctxt "vue部分"
+msgid "蜘蛛（智能）拦截"
+msgstr ""
+
+#: classes/_localize.php:135
+msgctxt "vue部分"
+msgid "蜘蛛文章爬取明细"
+msgstr ""
+
+#: classes/_localize.php:136
+msgctxt "vue部分"
+msgid "立即激活"
+msgstr ""
+
+#: classes/_localize.php:137
+msgctxt "vue部分"
+msgid "已激活"
+msgstr ""
+
+#: classes/_localize.php:138
+msgctxt "vue部分"
+msgid "所有状态"
+msgstr ""
+
+#: classes/_localize.php:139
+msgctxt "vue部分"
+msgid "记录"
+msgstr ""
+
+#: classes/_localize.php:140
+msgctxt "vue部分"
+msgid "未知"
+msgstr ""
+
+#: classes/_localize.php:141
+msgctxt "vue部分"
+msgid "近7天占比"
+msgstr ""
+
+#: classes/_localize.php:142
+msgctxt "vue部分"
+msgid "状态"
+msgstr ""
+
+#: classes/_localize.php:143
+msgctxt "vue部分"
+msgid "已拦截"
+msgstr ""
+
+#: classes/_localize.php:144
+msgctxt "vue部分"
+msgid "近7天占比%s%"
+msgstr ""
+
+#: classes/_localize.php:145
+msgctxt "vue部分"
+msgid "设置保存成功"
+msgstr ""
+
+#: classes/_localize.php:146
+msgctxt "vue部分"
+msgid ""
+"删除日志操作，将会永久性删除所有蜘蛛历史数据。请谨慎操作！"
+msgstr ""
+
+#: classes/_localize.php:147
+msgctxt "vue部分"
+msgid "删除成功"
+msgstr ""
+
+#: classes/_localize.php:148
+msgctxt "vue部分"
+msgid "保存并离开"
+msgstr ""
+
+#: classes/_localize.php:149
+msgctxt "vue部分"
+msgid "放弃修改"
+msgstr ""
+
+#: classes/_localize.php:150
+msgctxt "vue部分"
+msgid "您修改的设置尚未保存，确定离开此页面吗？"
+msgstr ""
+
+#: classes/_localize.php:151
+msgctxt "vue部分"
+msgid "保留周期"
+msgstr ""
+
+#: classes/_localize.php:152
+msgctxt "vue部分"
+msgid "日志记录"
+msgstr ""
+
+#: classes/_localize.php:153
+msgctxt "vue部分"
+msgid "日志更新"
+msgstr ""
+
+#: classes/_localize.php:154
+msgctxt "vue部分"
+msgid "即时更新"
+msgstr ""
+
+#: classes/_localize.php:155
+msgctxt "vue部分"
+msgid "每小时更新（推荐）"
+msgstr ""
+
+#: classes/_localize.php:156
+msgctxt "vue部分"
+msgid "每天更新"
+msgstr ""
+
+#: classes/_localize.php:157
+msgctxt "vue部分"
+msgid "备份与删除"
+msgstr ""
+
+#: classes/_localize.php:158
+msgctxt "vue部分"
+msgid "日志备份"
+msgstr ""
+
+#: classes/_localize.php:159
+msgctxt "vue部分"
+msgid "日志删除"
+msgstr ""
+
+#: classes/_localize.php:160
+msgctxt "vue部分"
+msgid "自定义蜘蛛"
+msgstr ""
+
+#: classes/_localize.php:161
+msgctxt "vue部分"
+msgid "近7天"
+msgstr ""
+
+#: classes/_localize.php:162
+msgctxt "vue部分"
+msgid "近30天（推荐）"
+msgstr ""
+
+#: classes/_localize.php:163
+msgctxt "vue部分"
+msgid "近3个月"
+msgstr ""
+
+#: classes/_localize.php:164
+msgctxt "vue部分"
+msgid "近6个月"
+msgstr ""
+
+#: classes/_localize.php:165
+msgctxt "vue部分"
+msgid "近1年"
+msgstr ""
+
+#: classes/_localize.php:166
+msgctxt "vue部分"
+msgid "永久"
+msgstr ""
+
+#: classes/_localize.php:167
+msgctxt "vue部分"
+msgid "如历史日志体积过大，可以考虑备份与删除日志。"
+msgstr ""
+
+#: classes/_localize.php:168
+msgctxt "vue部分"
+msgid ""
+"如蜘蛛日志过大导致数据库访问性能下降，建议选择保留周期为最近"
+"30天。"
+msgstr ""
+
+#: classes/_localize.php:169
+msgctxt "vue部分"
+msgid "可添加插件未记录的蜘蛛日志，请准确填写蜘蛛名称。"
+msgstr ""
+
+#: classes/_localize.php:170
+msgctxt "vue部分"
+msgid ""
+"站长可以根据日志记录行数判断蜘蛛日志是否太大，以作出日志备份"
+"或者删除操作，降低数据库压力。"
+msgstr ""
+
+#: classes/_localize.php:171
+msgctxt "vue部分"
+msgid ""
+"站长可以根据网站的蜘蛛爬取压力，选择蜘蛛日志更新方式，推荐使"
+"用默认选项-每小时更新。"
+msgstr ""
+
+#: classes/_localize.php:172
+msgctxt "vue部分"
+msgid "当前日志共%s行"
+msgstr ""
+
+#: classes/_localize.php:173
+msgctxt "vue部分"
+msgid "（%s 更新）"
+msgstr ""
+
+#: classes/_localize.php:174
+msgctxt "vue部分"
+msgid "确认删除？"
+msgstr ""
+
+#: classes/_localize.php:175
+msgctxt "vue部分"
+msgid "已移除"
+msgstr ""
+
+#: classes/_localize.php:176
+msgctxt "vue部分"
+msgid "请填写完整的\"类型\"及\"规则\""
+msgstr ""
+
+#: classes/_localize.php:177
+msgctxt "vue部分"
+msgid "规则"
+msgstr ""
+
+#: classes/_localize.php:178
+msgctxt "vue部分"
+msgid "输入规则，按回车确认"
+msgstr ""
+
+#: classes/_localize.php:179
+msgctxt "vue部分"
+msgid "默认WP规则"
+msgstr ""
+
+#: classes/_localize.php:180
+msgctxt "vue部分"
+msgid "完成编辑"
+msgstr ""
+
+#: classes/_localize.php:181
+msgctxt "vue部分"
+msgid "输入url类型"
+msgstr ""
+
+#: classes/_localize.php:182
+msgctxt "vue部分"
+msgid "完成"
+msgstr ""
+
+#: classes/_localize.php:183
+msgctxt "vue部分"
+msgid "删除"
+msgstr ""
+
+#: classes/_localize.php:184
+msgctxt "vue部分"
+msgid "添加定义"
+msgstr ""
+
+#: classes/_localize.php:185
+msgctxt "vue部分"
+msgid "上一周期数值"
+msgstr ""
+
+#: classes/_localize.php:186
+msgctxt "vue部分"
+msgid "蜘蛛数"
+msgstr ""
+
+#: classes/_localize.php:187
+msgctxt "vue部分"
+msgid "爬链数"
+msgstr ""
+
+#: classes/_localize.php:188
+msgctxt "vue部分"
+msgid "平均爬链"
+msgstr ""
+
+#: classes/_localize.php:189
+msgctxt "vue部分"
+msgid "日期"
+msgstr ""
+
+#: classes/_localize.php:190
+msgctxt "vue部分"
+msgid "查看更多"
+msgstr ""
+
+#: classes/_localize.php:191
+msgctxt "vue部分"
+msgid "活跃蜘蛛爬虫"
+msgstr ""
+
+#: classes/_localize.php:192
+msgctxt "vue部分"
+msgid "热门路径"
+msgstr ""
+
+#: classes/_localize.php:193
+msgctxt "vue部分"
+msgid "热门文章"
+msgstr ""
+
+#: classes/_localize.php:194
+msgctxt "vue部分"
+msgid "链接可访问性"
+msgstr ""
+
+#: classes/_localize.php:195
+msgctxt "vue部分"
+msgid "昨天"
+msgstr ""
+
+#: classes/_localize.php:196
+msgctxt "vue部分"
+msgid "最近7天"
+msgstr ""
+
+#: classes/_localize.php:197
+msgctxt "vue部分"
+msgid "最近30天"
+msgstr ""
+
+#: classes/_localize.php:198
+msgctxt "vue部分"
+msgid "数量"
+msgstr ""
+
+#: classes/_localize.php:199
+msgctxt "vue部分"
+msgid "蜘蛛日志"
+msgstr ""
+
+#: classes/_localize.php:200
+msgctxt "vue部分"
+msgid "爬取URL、时间、状态码、IP及蜘蛛名称等。"
+msgstr ""
+
+#: classes/_localize.php:201
+msgctxt "vue部分"
+msgid "蜘蛛列表"
+msgstr ""
+
+#: classes/_localize.php:202
+msgctxt "vue部分"
+msgid "蜘蛛清单、IP段、伪蜘蛛及拦截等。"
+msgstr ""
+
+#: classes/_localize.php:203
+msgctxt "vue部分"
+msgid "统观全站被爬取链接类型、次数及占比情况。"
+msgstr ""
+
+#: classes/_localize.php:204
+msgctxt "vue部分"
+msgid "文章爬取"
+msgstr ""
+
+#: classes/_localize.php:205
+msgctxt "vue部分"
+msgid "深入了解所有文章的蜘蛛爬取情况及出入链数。"
+msgstr ""
+
+#: classes/_localize.php:206
+msgctxt "vue部分"
+msgid "插件设置"
+msgstr ""
+
+#: classes/_localize.php:207
+msgctxt "vue部分"
+msgid "插件的驾驶舱，站长可按需配置各项参数。"
+msgstr ""
+
+#: classes/_localize.php:208
+msgctxt "vue部分"
+msgid "蜘蛛概况"
+msgstr ""
+
+#: classes/_localize.php:209
+msgctxt "vue部分"
+msgid "PRO版本"
+msgstr ""
+
+#: classes/_localize.php:210
+msgctxt "vue部分"
+msgid "蜘蛛清单"
+msgstr ""
+
+#: classes/_localize.php:211
+msgctxt "vue部分"
+msgid "蜘蛛IP段"
+msgstr ""
+
+#: classes/_localize.php:212
+msgctxt "vue部分"
+msgid "疑似伪蜘蛛"
+msgstr ""
+
+#: classes/_localize.php:213
+msgctxt "vue部分"
+msgid "蜘蛛拦截"
+msgstr ""
+
+#: classes/_localize.php:214
+msgctxt "vue部分"
+msgid "记录管理"
+msgstr ""
+
+#: classes/_localize.php:215
+msgctxt "vue部分"
+msgid "链接规则"
+msgstr ""
+
+#: classes/_localize.php:216
+msgctxt "vue部分"
+msgid "日志设置"
+msgstr ""
+
+#: classes/_localize.php:217
+msgctxt "vue部分"
+msgid "主题推荐"
+msgstr ""
+
+#: classes/_localize.php:218
+msgctxt "vue部分"
+msgid "插件推荐"
+msgstr ""
+
+#: classes/_localize.php:219
+msgctxt "vue部分"
+msgid "WP教程"
+msgstr ""
+
+#: classes/_localize.php:220
+msgctxt "vue部分"
+msgid "全屏"
+msgstr ""
+
+#: classes/_localize.php:221
+msgctxt "vue部分"
+msgid "闪电博"
+msgstr ""
+
+#: classes/_localize.php:222
+msgctxt "vue部分"
+msgid "免费插件"
+msgstr ""
+
+#: classes/_localize.php:223
+msgctxt "vue部分"
+msgid "说明文档"
+msgstr ""
+
+#: classes/_localize.php:224
+msgctxt "vue部分"
+msgid "服务协议"
+msgstr ""
+
+#: classes/_localize.php:225
+msgctxt "vue部分"
+msgid "隐私条例"
+msgstr ""
+
+#: classes/_localize.php:226
+msgctxt "vue部分"
+msgid "版本：%s"
+msgstr ""
+
+#: classes/_localize.php:227
+msgctxt "vue部分"
+msgid "保存设置"
+msgstr ""
+
+#: classes/_localize.php:228
+msgctxt "vue部分"
+msgid "首页"
+msgstr ""
+
+#: classes/_localize.php:229
+msgctxt "vue部分"
+msgid "PRO版"
+msgstr ""
+
+#: classes/_localize.php:230
+msgctxt "vue部分"
+msgid "Free版"
+msgstr ""
+
+#: classes/_localize.php:231
+msgctxt "vue部分"
+msgid "插件主页"
+msgstr ""
+
+#: classes/_localize.php:232
+msgctxt "vue部分"
+msgid "激活插件"
+msgstr ""
+
+#: classes/_localize.php:233
+msgctxt "vue部分"
+msgid "或"
+msgstr ""
+
+#: classes/_localize.php:234
+msgctxt "vue部分"
+msgid "现在更新"
+msgstr ""
+
+#: classes/_localize.php:235
+msgctxt "vue部分"
+msgid "当前%s有新版本可用."
+msgstr ""
+
+#: classes/_localize.php:236
+msgctxt "vue部分"
+msgid "查看版本%s详情"
+msgstr ""
+
+#: classes/_localize.php:237
+msgctxt "vue部分"
+msgid "温馨提示"
+msgstr ""
+
+#: classes/_localize.php:238
+msgctxt "vue部分"
+msgid "输入关键字筛选"
+msgstr ""
+
+#: classes/_localize.php:239
+msgctxt "vue部分"
+msgid "没有匹配 %s 的记录，请换个关键词试试..."
+msgstr ""
+
+#: classes/_localize.php:240
+msgctxt "vue部分"
+msgid "请输入标签"
+msgstr ""
+
+#: classes/_localize.php:241
+msgctxt "vue部分"
+msgid "已存在"
+msgstr ""
+
+#: classes/_localize.php:242
+msgctxt "vue部分"
+msgid "别名:"
+msgstr ""
+
+#: classes/_localize.php:243
+msgctxt "vue部分"
+msgid "选择文件"
+msgstr ""
+
+#: classes/_localize.php:244
+msgctxt "vue部分"
+msgid "选择"
+msgstr ""
+
+#: classes/_localize.php:245
+msgctxt "vue部分"
+msgid "插入URL"
+msgstr ""
+
+#: classes/_localize.php:246
+msgctxt "vue部分"
+msgid "设置链接"
+msgstr ""
+
+#: classes/_localize.php:247
+msgctxt "vue部分"
+msgid "激活KEY"
+msgstr ""
+
+#: classes/_localize.php:248
+msgctxt "vue部分"
+msgid "请输入激活KEY"
+msgstr ""
+
+#: classes/_localize.php:249
+msgctxt "vue部分"
+msgid "获取KEY"
+msgstr ""
+
+#: classes/_localize.php:250
+msgctxt "vue部分"
+msgid "绑定信息确认"
+msgstr ""
+
+#: classes/_localize.php:251
+msgctxt "vue部分"
+msgid "提交验证"
+msgstr ""
+
+#: classes/_localize.php:252
+msgctxt "vue部分"
+msgid "请输入激活码"
+msgstr ""
+
+#: classes/_localize.php:253
+msgctxt "vue部分"
+msgid "验证中..."
+msgstr ""
+
+#: classes/_localize.php:254
+msgctxt "vue部分"
+msgid "关闭"
+msgstr ""
+
+#: classes/_localize.php:255
+msgctxt "vue部分"
+msgid "验证成功"
+msgstr ""
+
+#: classes/_localize.php:256
+msgctxt "vue部分"
+msgid "绑定域名后将不可更改，确认绑定到域名：%s"
+msgstr ""
+
+#: Plugin Name
+msgid "Spider Analyser"
+msgstr ""
+
+#: Description
+msgid ""
+"Spider Analyser是一款用于跟踪WordPress网站各种搜索引擎蜘蛛爬"
+"行日志，并进行详细的蜘蛛爬行数据统计、蜘蛛行为分析、蜘蛛爬取"
+"分析及伪蜘蛛拦截等。"
+msgstr ""
+
+#: Author
+msgid "闪电博"
+msgstr ""
