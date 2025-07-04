@@ -65,10 +65,12 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         });
 
         add_action('parse_request', array(__CLASS__, 'parse_request'), 1);
-        add_action('admin_menu', array('WP_Spider_Analyser_Admin', 'admin_menu_handler')); // Changed to WP_Spider_Analyser_Admin
-        add_action('edit_post', array(__CLASS__, 'spider_edit_post'), 500, 2);
-        add_filter('plugin_action_links', array('WP_Spider_Analyser_Admin', 'plugin_action_links'), 10, 2); // Changed to WP_Spider_Analyser_Admin and method name
-        register_shutdown_function(array(__CLASS__, 'handle')); // Correctly registers WP_Spider_Analyser::handle
+        // Corrected callbacks to point to WP_Spider_Analyser_Admin for admin-specific hooks
+        add_action('admin_menu', array('WP_Spider_Analyser_Admin', 'admin_menu_handler'));
+        add_filter('plugin_action_links', array('WP_Spider_Analyser_Admin', 'plugin_action_links'), 10, 2);
+
+        add_action('edit_post', array(__CLASS__, 'spider_edit_post'), 500, 2); // Callback is in this class
+        register_shutdown_function(array(__CLASS__, 'handle'));
 
         add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
             if (!static::$in_log && $redirect_url) {
@@ -93,47 +95,44 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
         add_action('admin_enqueue_scripts', array(__CLASS__, 'admin_enqueue_scripts'), 1);
         add_action('admin_notices', array(__CLASS__, 'admin_notices'));
-        static::upgrade(); // Call to the now-defined upgrade method
+        static::upgrade();
     }
 
     /**
      * Placeholder for plugin upgrade routines.
-     * This method is called from init() and should contain any database schema updates
-     * or other upgrade tasks required when the plugin version changes.
      */
     public static function upgrade() {
-        // Example: Check current DB version and run setup_db if needed.
-        // $current_db_ver = get_option('wb_spider_analyser_db_ver', 0);
-        // if (version_compare($current_db_ver, YOUR_TARGET_DB_VERSION, '<')) {
-        //     static::setup_db();
-        //     update_option('wb_spider_analyser_db_ver', YOUR_TARGET_DB_VERSION);
-        // }
-        // For now, it's a stub to prevent fatal errors.
+        // Stub - actual upgrade logic would go here.
     }
 
     /**
-     * Shutdown handler to log requests that might not have been logged earlier.
+     * Shutdown handler to log requests.
      */
     public static function handle() {
         if (static::$after_request && !static::$in_log && !static::$blocked) {
-            // If parse_request ran (or an early log call happened, setting after_request)
-            // and no log was made yet (in_log is false)
-            // and the request was not blocked
-            // then attempt to log this request.
-            // This primarily catches redirects or requests that didn't trigger earlier logging.
-            $code = http_response_code(); // Get the final HTTP response code
-            if ($code && $code > 0) { // Ensure we have a valid code
+            $code = http_response_code();
+            if ($code && $code > 0) {
                  static::log($code);
             } else {
-                 static::log(); // Log with default code (likely 200 or determined by log())
+                 static::log();
             }
         }
     }
 
+    /**
+     * Callback for the 'edit_post' action hook.
+     *
+     * @param int     $post_id Post ID.
+     * @param WP_Post $post    Post object.
+     */
+    public static function spider_edit_post($post_id, $post) {
+        // This is a stub. Actual logic for handling post edits would go here.
+        // For example, clearing caches related to this post or triggering an analysis.
+    }
+
 
     /**
-     * Parse the current request to identify and potentially block spiders based on defined rules.
-     * Hooked to 'parse_request'.
+     * Parse the current request to identify and potentially block spiders.
      */
     public static function parse_request()
     {
@@ -195,7 +194,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     }
 
     /**
-     * Display admin notices, particularly for plugin updates.
+     * Display admin notices.
      */
     public static function admin_notices()
     {
@@ -233,7 +232,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     }
 
     /**
-     * Enqueue Vue assets for the admin interface.
+     * Enqueue Vue assets.
      */
     public static function vue_assets()
     {
@@ -272,8 +271,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     }
 
     /**
-     * Enqueue scripts and styles for the plugin's admin pages.
-     *
+     * Enqueue admin scripts and styles.
      * @param string $hook The current admin page hook.
      */
     public static function admin_enqueue_scripts( $hook ) {
@@ -317,10 +315,9 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     }
 
     /**
-     * Modify script tag for specific handles to add type="module".
-     *
-     * @param string $tag    The <script> tag for the enqueued script.
-     * @param string $handle The script's registered handle.
+     * Modify script tag to add type="module".
+     * @param string $tag    The <script> tag.
+     * @param string $handle The script's handle.
      * @param string $src    The script's source URL.
      * @return string Modified <script> tag.
      */
@@ -332,16 +329,14 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     }
 
     /**
-     * Determine the type of a given URL (e.g., index, post, category).
-     * Uses custom rules and falls back to WordPress query parsing.
-     *
+     * Determine the type of a given URL.
      * @param string $url The URL to analyze.
-     * @param WP_Post|null $query Passed by reference, will contain the post object if the URL is a singular post/page.
-     * @return string|null The determined URL type, or null if not determined.
+     * @param WP_Post|null $query Passed by reference.
+     * @return string|null The determined URL type.
      */
     public static function match_type($url, &$query = null)
     {
-        global $wp_filter, $wp_query; // Ensure $wp_query is global if we check its state.
+        global $wp_filter, $wp_query;
         $cnf = static::cnf();
 
         $type = null;
@@ -384,16 +379,12 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
             }
             if (empty($parse['path']) || $parse['path'] == '/') { $type = 'index'; break; }
 
-            // If WordPress main query has not run yet, attempting to use $wp_query conditional tags is unsafe.
-            if ( ! did_action('wp') ) {
-                 // We are too early for query-dependent conditional tags.
-                 // Rely on regex or custom rules, or default to 'other'.
-                $type = 'other'; // Or a more specific type if identifiable by URL pattern alone
+            if ( ! did_action('wp') ) { // Check if main query has run
+                $type = 'other';
                 break;
             }
 
-            // WordPress query simulation (only if 'wp' action has occurred)
-            $wp_temp = new WP(); // Use a temporary WP object
+            $wp_temp = new WP();
             $_SERVER['REQUEST_URI'] = $url;
             $_SERVER['PHP_SELF'] = '/index.php';
             $old_page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : null;
@@ -406,7 +397,6 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
             $old_wp_filter_parse_query = isset($wp_filter['parse_query']) ? $wp_filter['parse_query'] : null;
             remove_all_filters('parse_query');
 
-            // Use a temporary WP_Query object to avoid interfering with the main query
             $temp_query = new WP_Query();
             $temp_query->parse_query($wp_temp->query_vars);
 
@@ -438,12 +428,8 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     }
 
     /**
-     * Helper function to parse a URL and determine query variables,
-     * simulating part of WordPress's URL parsing mechanism.
-     *
-     * @global WP_Rewrite $wp_rewrite WordPress Rewrite object.
-     * @global WP $wp WordPress environment object.
-     * @param string $req_url The request URL to parse.
+     * Helper to parse a URL and determine query variables.
+     * @param string $req_url The request URL.
      * @return array Array of query variables.
      */
     public static function url_help($req_url)
@@ -567,12 +553,11 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
     /**
      * Generate chart data for spider visits.
-     *
-     * @param int    $day Number of days to fetch data for.
-     * @param int    $type Type of data to return (1: distinct spider count, 2: total visits, 3: visits per spider).
-     * @param int    $compare Comparison flag (currently seems to shift time window).
-     * @param string|null $spider Specific spider name to filter by.
-     * @return array Array containing x-axis data (dates/times) and y-axis data (counts).
+     * @param int    $day Number of days.
+     * @param int    $type Type of data.
+     * @param int    $compare Comparison flag.
+     * @param string|null $spider Specific spider.
+     * @return array Chart data.
      */
     public static function chart_data( $day, $type, $compare = 0, $spider = null ) {
         $db = static::db();
@@ -649,11 +634,9 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     }
 
     /**
-     * Get the thumbnail URL for a given spider name.
-     * Uses a static cache for bot_info within a single request.
-     *
-     * @param string $spider_name The name of the spider.
-     * @return string The URL of the spider's thumbnail, or a default placeholder.
+     * Get the thumbnail URL for a spider.
+     * @param string $spider_name The spider name.
+     * @return string Thumbnail URL or placeholder.
      */
     protected static function get_spider_thumbnail_url(string $spider_name): string {
         static $bot_info_cache = null;
@@ -669,7 +652,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     }
 
     /**
-     * Handle AJAX requests for saving/updating plugin settings and data.
+     * Handle AJAX requests for settings and data operations.
      */
     public static function spider_analyser_ajax_save() {
         $op_raw = static::param('op');
@@ -1532,3 +1515,5 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     // ... (These methods would be here, ensure they are public static if called statically)
 }
 ?>
+
+[end of classes/spider.class.php]
