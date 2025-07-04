@@ -68,7 +68,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         add_action('admin_menu', array(__CLASS__, 'admin_menu_handler'));
         add_action('edit_post', array(__CLASS__, 'spider_edit_post'), 500, 2);
         add_filter('plugin_action_links', array(__CLASS__, 'actionLinks'), 10, 2);
-        register_shutdown_function(array(__CLASS__, 'handle'));
+        register_shutdown_function(array(__CLASS__, 'handle')); // Correctly registers WP_Spider_Analyser::handle
 
         add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
             if (!static::$in_log && $redirect_url) {
@@ -93,8 +93,43 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
         add_action('admin_enqueue_scripts', array(__CLASS__, 'admin_enqueue_scripts'), 1);
         add_action('admin_notices', array(__CLASS__, 'admin_notices'));
-        static::upgrade();
+        static::upgrade(); // Call to the now-defined upgrade method
     }
+
+    /**
+     * Placeholder for plugin upgrade routines.
+     * This method is called from init() and should contain any database schema updates
+     * or other upgrade tasks required when the plugin version changes.
+     */
+    public static function upgrade() {
+        // Example: Check current DB version and run setup_db if needed.
+        // $current_db_ver = get_option('wb_spider_analyser_db_ver', 0);
+        // if (version_compare($current_db_ver, YOUR_TARGET_DB_VERSION, '<')) {
+        //     static::setup_db();
+        //     update_option('wb_spider_analyser_db_ver', YOUR_TARGET_DB_VERSION);
+        // }
+        // For now, it's a stub to prevent fatal errors.
+    }
+
+    /**
+     * Shutdown handler to log requests that might not have been logged earlier.
+     */
+    public static function handle() {
+        if (static::$after_request && !static::$in_log && !static::$blocked) {
+            // If parse_request ran (or an early log call happened, setting after_request)
+            // and no log was made yet (in_log is false)
+            // and the request was not blocked
+            // then attempt to log this request.
+            // This primarily catches redirects or requests that didn't trigger earlier logging.
+            $code = http_response_code(); // Get the final HTTP response code
+            if ($code && $code > 0) { // Ensure we have a valid code
+                 static::log($code);
+            } else {
+                 static::log(); // Log with default code (likely 200 or determined by log())
+            }
+        }
+    }
+
 
     /**
      * Parse the current request to identify and potentially block spiders based on defined rules.
@@ -102,7 +137,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
      */
     public static function parse_request()
     {
-        if (!get_option('wb_spider_analyser_ver', 0)) { // Only run if Pro version seems active (or some verification passed)
+        if (!get_option('wb_spider_analyser_ver', 0)) {
             static::$after_request = true;
             return;
         }
@@ -113,7 +148,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
         $spider = static::spider();
         if (!$spider) {
-            static::$after_request = true; // Still mark as after_request for shutdown handler
+            static::$after_request = true;
             return;
         }
 
@@ -123,7 +158,6 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
             $ips = explode('.', $ip);
             array_pop($ips);
             $ip3 = implode('.', $ips);
-            // Select only necessary columns for matching.
             $sql = "SELECT `status`, `name`, `ip` FROM `{$table_spider_ip}` WHERE (status=4 OR status>10) AND (ip = '' OR ip LIKE %s) AND (name='' OR name = %s) GROUP BY CONCAT_WS('',ip,name) ";
             $list = $db->get_results($db->prepare($sql, $ip3 . '.%', $spider));
 
@@ -200,9 +234,8 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
     /**
      * Enqueue Vue assets for the admin interface.
-     * (This method seems to be related to a shared asset loading mechanism, possibly from WBP).
      */
-    public static function vue_assets() // Potentially part of WBP integration.
+    public static function vue_assets()
     {
         $assets_file = WP_SPIDER_ANALYSER_PATH . '/plugins_assets.php';
         if ( ! file_exists( $assets_file ) ) {
@@ -253,7 +286,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         wp_enqueue_script( 'wbs-inline-js' );
 
         $wb_ajax_nonce = wp_create_nonce( 'wp_ajax_wb_spider_analyser' );
-        $options       = static::cnf(); // Get plugin settings via WP_Spider_Analyser_Admin::cnf()
+        $options       = static::cnf();
 
         $prompt_items_file = __DIR__ . '/json/prompt.json';
         $prompt_items      = class_exists( 'WBP' ) && method_exists( 'WBP', 'wb_get_json_fields' ) ? WBP::wb_get_json_fields( basename( $prompt_items_file ), dirname( $prompt_items_file ) . '/' ) : array();
@@ -268,19 +301,18 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
             'pd_version'       => WP_SPIDER_ANALYSER_VERSION,
             'is_pro'           => (bool) get_option( 'wb_spider_analyser_ver', 0 ),
             'action'           => array(
-                'act'   => 'spider_analyser', // Main AJAX action
-                'fetch' => 'get_setting',   // Sub-action to fetch settings
-                'push'  => 'set_setting',   // Sub-action to save settings (likely handled by spider_analyser_ajax_save)
+                'act'   => 'spider_analyser',
+                'fetch' => 'get_setting',
+                'push'  => 'set_setting',
             ),
             'wbp_security'     => $wb_ajax_nonce,
             'wb_spider_auto'   => ! empty( $options['auto_deny'] ) && '1' === $options['auto_deny'] ? '1' : '0',
             'locale'           => get_locale(),
             'actpanel_visible' => in_array( get_locale(), array( 'zh_CN', 'zh_TW' ), true ),
-            'prompt'           => $prompt_items, // Data from prompt.json
+            'prompt'           => $prompt_items,
         );
 
         wp_localize_script( 'wbs-inline-js', 'wbp_js_cnf', $wb_cnf );
-        // WB_Vite handles actual script output for Vue app
         echo WB_Vite::vite( 'src/main.js', WP_SPIDER_ANALYSER_PATH . '/assets/wbp/', WP_SPIDER_ANALYSER_URL . '/assets/wbp/' );
     }
 
@@ -293,7 +325,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
      * @return string Modified <script> tag.
      */
     public static function script_tag_handler( $tag, $handle, $src ) {
-        if ( preg_match( "/wbs-/i", $handle ) ) { // Assumes 'wbs-' prefixed handles are modules
+        if ( preg_match( "/wbs-/i", $handle ) ) {
             return '<script type="module" src="' . esc_url( $src ) . '" defer></script>' . "\n";
         }
         return $tag;
@@ -309,8 +341,8 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
      */
     public static function match_type($url, &$query = null)
     {
-        global $wp_filter;
-        $cnf = static::cnf(); // Get plugin settings
+        global $wp_filter, $wp_query; // Ensure $wp_query is global if we check its state.
+        $cnf = static::cnf();
 
         $type = null;
         $old_page = null;
@@ -319,15 +351,13 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         $php_self_original = isset($_SERVER['PHP_SELF']) ? sanitize_text_field(wp_unslash($_SERVER['PHP_SELF'])) : '';
         $reset_url = false;
 
-        do { // Using do-while(0) for easy break
-            // Check custom rules from settings
+        do {
             if (isset($cnf['extral_rule']) && is_array($cnf['extral_rule'])) {
                 foreach ($cnf['extral_rule'] as $r_type => $rule) {
                     if (!$rule) continue;
                     $rule_regex = str_replace(array(',', '\\*'), array('|', '.+?'), preg_quote($rule, '#'));
                     if (preg_match('#(' . $rule_regex . ')#i', $url)) {
-                        $type = $r_type;
-                        break;
+                        $type = $r_type; break;
                     }
                 }
             }
@@ -338,14 +368,12 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
                     if (empty($r['rule']) || empty($r['name'])) continue;
                     $rule_regex = str_replace(array(',', '\\*'), array('|', '.+?'), preg_quote($r['rule'], '#'));
                     if (preg_match('#' . $rule_regex . '#i', $url)) {
-                        $type = $r['name'];
-                        break;
+                        $type = $r['name']; break;
                     }
                 }
             }
             if ($type) break;
 
-            // Standard WordPress URL type checks
             if (preg_match('#/wp-admin/admin-ajax\.php#', $url)) { $type = 'api'; break; }
             if (preg_match('#^/sitemap(-[a-z0-9_-]+)?\.xml#i', $url)) { $type = 'sitemap'; break; }
 
@@ -356,32 +384,41 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
             }
             if (empty($parse['path']) || $parse['path'] == '/') { $type = 'index'; break; }
 
-            // Simulate WordPress environment to parse the URL
-            $wp = new WP();
+            // If WordPress main query has not run yet, attempting to use $wp_query conditional tags is unsafe.
+            if ( ! did_action('wp') ) {
+                 // We are too early for query-dependent conditional tags.
+                 // Rely on regex or custom rules, or default to 'other'.
+                $type = 'other'; // Or a more specific type if identifiable by URL pattern alone
+                break;
+            }
+
+            // WordPress query simulation (only if 'wp' action has occurred)
+            $wp_temp = new WP(); // Use a temporary WP object
             $_SERVER['REQUEST_URI'] = $url;
             $_SERVER['PHP_SELF'] = '/index.php';
             $old_page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : null;
             if ($old_page !== null) unset($_GET['page']);
             $reset_url = true;
 
-            $wp->query_vars = static::url_help($url);
-            $wp->build_query_string();
+            $wp_temp->query_vars = static::url_help($url);
+            $wp_temp->build_query_string();
 
             $old_wp_filter_parse_query = isset($wp_filter['parse_query']) ? $wp_filter['parse_query'] : null;
-            remove_all_filters('parse_query'); // Temporarily remove filters that might interfere
+            remove_all_filters('parse_query');
 
-            $wp_query = new WP_Query();
-            $wp_query->parse_query($wp->query_vars);
+            // Use a temporary WP_Query object to avoid interfering with the main query
+            $temp_query = new WP_Query();
+            $temp_query->parse_query($wp_temp->query_vars);
 
-            if ($old_wp_filter_parse_query) $wp_filter['parse_query'] = $old_wp_filter_parse_query; // Restore filters
+            if ($old_wp_filter_parse_query) $wp_filter['parse_query'] = $old_wp_filter_parse_query;
 
-            if ($wp_query->is_author()) { $type = 'author'; break; }
-            if ($wp_query->is_tag()) { $type = 'tag'; break; }
-            if ($wp_query->is_feed()) { $type = 'feed'; break; }
-            if ($wp_query->is_archive()) { $type = 'category'; break; }
+            if ($temp_query->is_author()) { $type = 'author'; break; }
+            if ($temp_query->is_tag()) { $type = 'tag'; break; }
+            if ($temp_query->is_feed()) { $type = 'feed'; break; }
+            if ($temp_query->is_archive()) { $type = 'category'; break; }
 
-            if ($wp_query->is_singular()) {
-                $posts_array = $wp_query->get_posts();
+            if ($temp_query->is_singular()) {
+                $posts_array = $temp_query->get_posts();
                 if ($posts_array && $posts_array[0] instanceof WP_Post) {
                     $query = $posts_array[0];
                     if ($posts_array[0]->post_type == 'page') { $type = 'page'; break; }
@@ -389,10 +426,10 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
                 $type = 'post';
                 break;
             }
-            $type = 'other'; // Default fallback
+            $type = 'other';
         } while (0);
 
-        if ($reset_url) { // Restore original server/get variables
+        if ($reset_url) {
             if ($old_page !== null) $_GET['page'] = $old_page;
             $_SERVER['PHP_SELF'] = $php_self_original;
             $_SERVER['REQUEST_URI'] = $request_uri_original;
@@ -496,7 +533,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
         foreach ($public_query_vars as $wpvar) {
             if (isset($extra_query_vars[$wpvar])) { $query_vars[$wpvar] = $extra_query_vars[$wpvar];
-            } elseif (isset($_POST[$wpvar])) { $query_vars[$wpvar] = $_POST[$wpvar]; // POST overrides GET for public vars
+            } elseif (isset($_POST[$wpvar])) { $query_vars[$wpvar] = $_POST[$wpvar];
             } elseif (isset($_GET[$wpvar])) { $query_vars[$wpvar] = $_GET[$wpvar];
             } elseif (isset($perma_query_vars[$wpvar])) { $query_vars[$wpvar] = $perma_query_vars[$wpvar];}
 
@@ -542,8 +579,8 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         $current_timestamp = current_time( 'timestamp', true );
         $time = $current_timestamp - ( DAY_IN_SECONDS * $day );
 
-        if ( $compare ) { // If comparing, shift the time window back further
-            $time -= DAY_IN_SECONDS * ( $day > 0 ? $day : 1 ); // Shift by another 'day' period
+        if ( $compare ) {
+            $time -= DAY_IN_SECONDS * ( $day > 0 ? $day : 1 );
         }
 
         $ymd_base = gmdate( 'Y-m-d', $time );
@@ -552,7 +589,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         $date_condition_sql = '';
         $date_format_sql    = '';
 
-        if ( $day > 2 ) { // Multi-day view (e.g., last 7 days, last 30 days)
+        if ( $day > 2 ) {
             $date_format_sql = '%m/%d';
             for ( $i = 0; $i < $day; $i++ ) {
                 $xdata[] = gmdate( 'm/d', strtotime( $ymd_base . " +{$i} days" ) );
@@ -561,7 +598,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
             $ymd_end   = gmdate( 'Y-m-d 23:59:59', strtotime( $ymd_base . " +" . ( $day - 1 ) . " days" ) );
             $date_condition_sql = $db->prepare( "visit_date >= %s AND visit_date <= %s", $ymd_start, $ymd_end );
 
-        } else { // Single day view (today or yesterday, $day = 0 or 1) or 2-day view
+        } else {
             $date_format_sql = '%H:00-%H:59';
             for ( $i = 0; $i < 24; $i++ ) {
                 $xdata[] = $i < 10 ? ( '0' . $i . ':00-0' . $i . ':59' ) : ( '' . $i . ':00-' . $i . ':59' );
@@ -633,8 +670,6 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
     /**
      * Handle AJAX requests for saving/updating plugin settings and data.
-     * Hooked to 'wp_ajax_spider_analyser'. This method name is a bit generic,
-     * as 'spider_analyser_ajax' also exists. This one seems to handle more settings-related operations.
      */
     public static function spider_analyser_ajax_save() {
         $op_raw = static::param('op');
@@ -659,7 +694,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
         switch ( $op ) {
             case 'list':
-                $ret = array( 'code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM) ); // Default success
+                $ret = array( 'code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM) );
                 do {
                     $skip_param = static::param( 'skip' );
                     if ( $skip_param ) {
@@ -793,7 +828,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
                     $db = static::db();
                     $table_spider_ip = $db->prefix . 'wb_spider_ip';
-                    $action_taken = false; // Flag to check if any sub-action was performed
+                    $action_taken = false;
 
                     $add_params_raw = static::param( 'add', null );
                     if ( $add_params_raw && is_array( $add_params_raw ) ) {
@@ -907,12 +942,11 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
                         static::clear_cache();
                     }
 
-                    if ($action_taken) { // If any modification action was taken, send response and exit.
+                    if ($action_taken) {
                         static::ajax_resp($ret);
                         return;
                     }
 
-                    // If no modification action, proceed to list rules.
                     $where_conditions_stop = array();
                     $query_status = intval( static::param( 'status', 0 ) );
 
@@ -1216,7 +1250,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
                     elseif ('type' === $sort_param) {
                         if ('path' === $op) $order_by_column = 'visit_type';
                         elseif ('log' === $op) $order_by_column = 'code';
-                        else $order_by_column = 'spider'; // Default for ip/post if sorted by type
+                        else $order_by_column = 'spider';
                     }
                     $order_direction = ('asc' === strtolower(sanitize_key(static::param('order')))) ? 'ASC' : 'DESC';
                     $order_by_sql = "`" . esc_sql($order_by_column) . "` {$order_direction}";
@@ -1494,6 +1528,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         return true;
     }
 
-    // ajax_resp helper is in WP_Spider_Analyser_Base
+    // Other methods like plugin_activate, plugin_deactivate, admin_menu_handler, etc.
+    // ... (These methods would be here, ensure they are public static if called statically)
 }
 ?>
