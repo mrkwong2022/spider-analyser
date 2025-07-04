@@ -4,7 +4,7 @@ Donate link: https://www.wbolt.com/
 Tags: Googlebot, Spider, Baiduspider, Bingbot, Crawler
 Requires at least: 5.6
 Tested up to: 6.8
-Stable tag: 2.2.0
+Stable tag: 2.1.3
 License: GNU General Public License v3.0 or later
 Requires PHP: 7.0
 

@@ -1,54 +1,28 @@
 <?php
-/**
- * Spider Analyser Core Class.
- *
- * Handles spider detection, logging, request parsing, AJAX actions,
- * and other core functionalities of the plugin.
- *
- * @package Spider_Analyser
- * @since 1.0.0
- */
+
 
 if (!defined('ABSPATH')) {
     return;
 }
 
-/**
- * Main class for Spider Analyser plugin.
- * Extends WP_Spider_Analyser_Base for common utilities.
- */
+
+
 class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 {
-    /**
-     * Flag to indicate if a log entry has already been made for the current request.
-     * @var bool
-     */
+
     public static $in_log = false;
-    /**
-     * Debug mode flag.
-     * @var bool
-     */
     public static $debug = false;
-    /**
-     * Flag to indicate if the current request has been blocked.
-     * @var bool
-     */
     public static $blocked = false;
-    /**
-     * Flag to indicate if the 'parse_request' action has occurred.
-     * @var bool
-     */
     public static $after_request = false;
 
-    /**
-     * Initialize the plugin, set up hooks and actions.
-     */
+
     public static function init()
     {
         add_action('plugins_loaded', function () {
             load_plugin_textdomain(WB_SPA_DM, false, plugin_basename(WP_SPIDER_ANALYSER_PATH) . '/languages/');
         });
 
+        // 插件列表页支持本地化语言展示
         add_filter('all_plugins', function ($plugins) {
             if (isset($plugins['spider-analyser/index.php'])) {
                 $plugins_info = [
@@ -65,28 +39,32 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         });
 
         add_action('parse_request', array(__CLASS__, 'parse_request'), 1);
-        // Corrected callbacks to point to WP_Spider_Analyser_Admin for admin-specific hooks
-        add_action('admin_menu', array('WP_Spider_Analyser_Admin', 'admin_menu_handler'));
-        add_filter('plugin_action_links', array('WP_Spider_Analyser_Admin', 'plugin_action_links'), 10, 2);
 
-        add_action('edit_post', array(__CLASS__, 'spider_edit_post'), 500, 2); // Callback is in this class
+        add_action('admin_menu', array(__CLASS__, 'admin_menu_handler'));
+        add_action('edit_post', array(__CLASS__, 'spider_edit_post'), 500, 2);
+        add_filter('plugin_action_links', array(__CLASS__, 'actionLinks'), 10, 2);
         register_shutdown_function(array(__CLASS__, 'handle'));
 
         add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
-            if (!static::$in_log && $redirect_url) {
-                static::$in_log = true;
-                static::log(302);
+            if (!self::$in_log && $redirect_url) {
+                self::$in_log = true;
+                self::log(302);
             }
             return $redirect_url;
         }, 10, 2);
 
+
+        //
         add_action('wp_wb_spider_analyser_cron', array(__CLASS__, 'wp_wb_spider_analyser_cron'));
+
         if (!wp_next_scheduled('wp_wb_spider_analyser_cron')) {
             wp_schedule_event(strtotime(current_time('Y-m-d H:i:00', 1)), 'hourly', 'wp_wb_spider_analyser_cron');
         }
 
         register_activation_hook(WP_SPIDER_ANALYSER_BASE_FILE, array(__CLASS__, 'plugin_activate'));
         register_deactivation_hook(WP_SPIDER_ANALYSER_BASE_FILE, array(__CLASS__, 'plugin_deactivate'));
+
+
 
         WP_Spider_Analyser_Admin::init();
 
@@ -95,58 +73,30 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
 
         add_action('admin_enqueue_scripts', array(__CLASS__, 'admin_enqueue_scripts'), 1);
         add_action('admin_notices', array(__CLASS__, 'admin_notices'));
-        static::upgrade();
-    }
-
-    /**
-     * Placeholder for plugin upgrade routines.
-     */
-    public static function upgrade() {
-        // Stub - actual upgrade logic would go here.
-    }
-
-    /**
-     * Shutdown handler to log requests.
-     */
-    public static function handle() {
-        if (static::$after_request && !static::$in_log && !static::$blocked) {
-            $code = http_response_code();
-            if ($code && $code > 0) {
-                 static::log($code);
-            } else {
-                 static::log();
-            }
-        }
-    }
-
-    /**
-     * Callback for the 'edit_post' action hook.
-     *
-     * @param int     $post_id Post ID.
-     * @param WP_Post $post    Post object.
-     */
-    public static function spider_edit_post($post_id, $post) {
-        // This is a stub. Actual logic for handling post edits would go here.
+        self::upgrade();
     }
 
 
-    /**
-     * Parse the current request to identify and potentially block spiders.
-     */
     public static function parse_request()
     {
+        // global $wpdb;
+
         if (!get_option('wb_spider_analyser_ver', 0)) {
-            static::$after_request = true;
+            self::$after_request = true;
             return;
         }
 
-        $db = static::db();
-        $ip = static::getIp();
-        $table_spider_ip = $db->prefix . 'wb_spider_ip';
+        $db = self::db();
 
-        $spider = static::spider();
+        $ip = self::getIp();
+        $t = $db->prefix . 'wb_spider_ip';
+
+        //self::txt_log('parse_request');
+
+
+        $spider = self::spider();
+        //self::txt_log('spider '.$spider);
         if (!$spider) {
-            static::$after_request = true;
             return;
         }
 
@@ -156,281 +106,338 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
             $ips = explode('.', $ip);
             array_pop($ips);
             $ip3 = implode('.', $ips);
-            $sql = "SELECT `status`, `name`, `ip` FROM `{$table_spider_ip}` WHERE (status=4 OR status>10) AND (ip = '' OR ip LIKE %s) AND (name='' OR name = %s) GROUP BY CONCAT_WS('',ip,name) ";
+            $sql = "SELECT * FROM $t WHERE (status=4 OR status>10) AND (ip = '' OR ip LIKE %s) AND (name='' OR name = %s) GROUP BY CONCAT_WS('',ip,name) ";
+
             $list = $db->get_results($db->prepare($sql, $ip3 . '.%', $spider));
 
-            if ($list) {
-                foreach ($list as $r) {
-                    $rule_matches = false;
-                    if (isset($r->name) && $r->name === $spider) {
-                        if (empty($r->ip) || $r->ip === $ip3 . '.*' || $r->ip === $ip) {
-                            $rule_matches = true;
-                        }
-                    } elseif (empty($r->name) && isset($r->ip)) {
-                         if ($r->ip === $ip3 . '.*' || $r->ip === $ip) {
-                            $rule_matches = true;
-                        }
+            if ($list) foreach ($list as $r) {
+                $match = true;
+                if ($r->name) { //match name
+                    //check ip not match
+                    if ($r->ip && $r->ip != $ip3 . '.*' && $ip != $r->ip) {
+                        $match = false;
                     }
-                    if ($rule_matches) {
-                        $match = true;
-                        break;
+                } else { //only ip
+                    //check ip not match
+                    if ($r->ip && $r->ip != $ip3 . '.*' && $ip != $r->ip) {
+                        $match = false;
                     }
+                }
+                if ($match) {
+                    break;
                 }
             }
         } else {
-            $sql = "SELECT `status`, `name` FROM `{$table_spider_ip}` WHERE (status=4 OR status>10) AND name = %s GROUP BY name";
+            $sql = "SELECT * FROM $t WHERE (status=4 OR status>10) AND name = %s GROUP BY name";
+
             $list = $db->get_results($db->prepare($sql, $spider));
             if ($list) {
                 $match = true;
             }
         }
 
-        static::$after_request = true;
+        self::$after_request = true;
         if ($match) {
-            static::$blocked = true;
-            wp_die( esc_html__('Blocked Spider Access!', WB_SPA_DM), esc_html__('IP Blocked', WB_SPA_DM), array('response' => 403) );
+            self::$blocked = true;
+            wp_die('Blocked Spider Access!', 'IP Blocked', array('response' => 403));
+            exit();
         }
     }
 
-    /**
-     * Display admin notices.
-     */
+
     public static function admin_notices()
     {
         global $current_screen;
-        if ( ! current_user_can( 'update_plugins' ) ) {
+        if (!current_user_can('update_plugins')) {
             return;
         }
-        if ( ! $current_screen || ! preg_match( '#spider_analyser#', $current_screen->parent_base ) ) {
+        if (!preg_match('#spider_analyser#', $current_screen->parent_base)) {
             return;
         }
-        $current = get_site_transient( 'update_plugins' );
-        if ( ! $current ) {
+        $current         = get_site_transient('update_plugins');
+        if (!$current) {
             return;
         }
-        $plugin_file = plugin_basename( WP_SPIDER_ANALYSER_BASE_FILE );
-        if ( ! isset( $current->response[ $plugin_file ] ) ) {
+        $plugin_file = plugin_basename(WP_SPIDER_ANALYSER_BASE_FILE);
+        if (!isset($current->response[$plugin_file])) {
             return;
         }
-        $all_plugins = get_plugins();
-        if ( ! $all_plugins || ! isset( $all_plugins[ $plugin_file ] ) ) {
+        $all_plugins     = get_plugins();
+        if (!$all_plugins || !isset($all_plugins[$plugin_file])) {
             return;
         }
-        $plugin_data = $all_plugins[ $plugin_file ];
-        $update      = $current->response[ $plugin_file ];
+        $plugin_data = $all_plugins[$plugin_file];
+        $update = $current->response[$plugin_file];
 
-        $update_url = wp_nonce_url( admin_url( 'update.php?action=upgrade-plugin&plugin=' . $plugin_file ), 'upgrade-plugin_' . $plugin_file );
+        //print_r($update);
+        $update_url = wp_nonce_url(self_admin_url('update.php?action=upgrade-plugin&plugin=') . $plugin_file, 'upgrade-plugin_' . $plugin_file);
 
         $pd_name = $plugin_data['Name'];
-        echo '<div class="update-message notice inline notice-warning notice-alt"><p>' . sprintf(
-            esc_html__( '%1$s有新版本可用。 %2$s 或 %3$s。', WB_SPA_DM ),
-            esc_html( $pd_name ),
-            '<a href="' . esc_url( $update->url ) . '" target="_blank" aria-label="' . esc_attr( sprintf( _x( '查看 %s 版本 %s 详情', 'Plugin update notice link', WB_SPA_DM ), $pd_name, $update->new_version ) ) . '">' . sprintf( esc_html__( '查看版本 %s 详情', WB_SPA_DM ), esc_html( $update->new_version ) ) . '</a>',
-            '<a href="' . esc_url( $update_url ) . '" class="update-link" aria-label="' . esc_attr( sprintf( _x( '现在更新%s', 'Plugin update notice link', WB_SPA_DM ), $pd_name ) ) . '">' . esc_html_x( '现在更新', 'Plugin update notice link text', WB_SPA_DM ) . '</a>'
-        ) . '</p></div>';
+        echo  '<div class="update-message notice inline notice-warning notice-alt"><p>' . esc_html($pd_name) . __('有新版本可用。', WB_SPA_DM);
+        echo  '<a href="' . esc_url($update->url) . '" target="_blank" aria-label="' . sprintf(_x('查看 %s 版本', '%s产品名', WB_SPA_DM), $pd_name) . esc_attr($update->new_version) . '">' . sprintf(__('查看版本 %s 详情', WB_SPA_DM), esc_html($update->new_version)) . '</a>';
+        echo  _x('或', 'or', WB_SPA_DM) . '<a href="' . esc_url($update_url) . '" class="update-link" aria-label="' . sprintf(_x('现在更新%s', '%s产品名', WB_SPA_DM), $pd_name) . '">' . _x('现在更新', 'link', WB_SPA_DM) . '</a>。</p></div>';
     }
 
-    /**
-     * Enqueue Vue assets.
-     */
     public static function vue_assets()
     {
-        $assets_file = WP_SPIDER_ANALYSER_PATH . '/plugins_assets.php';
-        if ( ! file_exists( $assets_file ) ) {
-            return;
-        }
-        $assets = include $assets_file;
 
-        if ( ! $assets || ! is_array( $assets ) ) {
+        $assets = include WP_SPIDER_ANALYSER_PATH . '/plugins_assets.php';
+
+        if (!$assets || !is_array($assets)) {
             return;
         }
 
         $wp_styles = wp_styles();
-        if ( isset( $assets['css'] ) && is_array( $assets['css'] ) ) {
-            foreach ( $assets['css'] as $r ) {
-                if ( isset( $r['handle'], $r['src'] ) ) {
-                    $wp_styles->add( $r['handle'], WP_SPIDER_ANALYSER_URL . $r['src'], isset( $r['dep'] ) ? $r['dep'] : array(), WP_SPIDER_ANALYSER_VERSION, isset( $r['args'] ) ? $r['args'] : null );
-                    $wp_styles->enqueue( $r['handle'] );
-                }
-            }
+        if (isset($assets['css']) && is_array($assets['css'])) foreach ($assets['css'] as $r) {
+            $wp_styles->add($r['handle'], WP_SPIDER_ANALYSER_URL . $r['src'], $r['dep'], null, $r['args']);
+            $wp_styles->enqueue($r['handle']); //.'?v=1'
         }
-        if ( isset( $assets['js'] ) && is_array( $assets['js'] ) ) {
-            foreach ( $assets['js'] as $r ) {
-                if ( isset( $r['handle'] ) ) {
-                    if ( empty( $r['src'] ) && ! empty( $r['in_line'] ) ) {
-                        wp_register_script( $r['handle'], false, isset( $r['dep'] ) ? $r['dep'] : array(), WP_SPIDER_ANALYSER_VERSION, true );
-                        wp_enqueue_script( $r['handle'] );
-                        wp_add_inline_script( $r['handle'], $r['in_line'], 'after' );
-                    } elseif ( ! empty( $r['src'] ) ) {
-                        wp_enqueue_script( $r['handle'], WP_SPIDER_ANALYSER_URL . $r['src'], isset( $r['dep'] ) ? $r['dep'] : array(), WP_SPIDER_ANALYSER_VERSION, true );
-                    }
-                }
+        if (isset($assets['js']) && is_array($assets['js'])) foreach ($assets['js'] as $r) {
+            if (!$r['src'] && $r['in_line']) {
+                wp_register_script($r['handle'], false, $r['dep'], false, true);
+                wp_enqueue_script($r['handle']);
+                wp_add_inline_script($r['handle'], $r['in_line'], 'after');
+            } else if ($r['src']) {
+                wp_enqueue_script($r['handle'], WP_SPIDER_ANALYSER_URL . $r['src'], $r['dep'], null, true);
             }
         }
     }
 
-    /**
-     * Enqueue admin scripts and styles.
-     * @param string $hook The current admin page hook.
-     */
-    public static function admin_enqueue_scripts( $hook ) {
-        if ( ! preg_match( '#wp_spider_analyser#', $hook ) ) {
+    public static function admin_enqueue_scripts($hook)
+    {
+
+
+        if (!preg_match('#wp_spider_analyser#', $hook)) {
             return;
         }
-        add_filter( 'script_loader_tag', array( __CLASS__, 'script_tag_handler' ), 10, 3 );
+        add_filter('script_loader_tag', [__CLASS__, 'script_tag_handler'], 10, 3);
 
-        wp_register_script( 'wbs-inline-js', false, array(), WP_SPIDER_ANALYSER_VERSION, true );
-        wp_enqueue_script( 'wbs-inline-js' );
+        wp_register_script('wbs-inline-js', false, null, false);
+        wp_enqueue_script('wbs-inline-js');
 
-        $wb_ajax_nonce = wp_create_nonce( 'wp_ajax_wb_spider_analyser' );
-        $options       = WP_Spider_Analyser_Admin::cnf(); // Correctly call cnf() from Admin class
+        $wb_ajax_nonce = wp_create_nonce('wp_ajax_wb_spider_analyser');
 
-        $prompt_items_file = __DIR__ . '/json/prompt.json';
-        $prompt_items      = class_exists( 'WBP' ) && method_exists( 'WBP', 'wb_get_json_fields' ) ? WBP::wb_get_json_fields( basename( $prompt_items_file ), dirname( $prompt_items_file ) . '/' ) : array();
+        $options = self::cnf();
+
+        $prompt_items = WBP::wb_get_json_fields('prompt.json', __DIR__ . '/json/');
 
         $wb_cnf = array(
-            'home_url'         => home_url(),
-            'base_url'         => admin_url(),
-            'ajax_url'         => admin_url( 'admin-ajax.php' ),
-            'dir_url'          => WP_SPIDER_ANALYSER_URL,
-            'pd_code'          => 'spider-analyser',
-            'pd_title'         => _x( 'Spider Analyser-蜘蛛分析插件', '产品名', WB_SPA_DM ),
-            'pd_version'       => WP_SPIDER_ANALYSER_VERSION,
-            'is_pro'           => (bool) get_option( 'wb_spider_analyser_ver', 0 ),
-            'action'           => array(
-                'act'   => 'spider_analyser',
+            'home_url' => home_url(),
+            'base_url' => admin_url(),
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'dir_url' => WP_SPIDER_ANALYSER_URL,
+            'pd_code' => "spider-analyser",
+            'pd_title' => _x('Spider Analyser-蜘蛛分析插件', '产品名', WB_SPA_DM),
+            'pd_version' => WP_SPIDER_ANALYSER_VERSION,
+            'is_pro' => intval(get_option('wb_spider_analyser_ver', 0)),
+            'action' => array(
+                'act' => 'spider_analyser',
                 'fetch' => 'get_setting',
-                'push'  => 'set_setting',
+                'push' => 'set_setting'
             ),
-            'wbp_security'     => $wb_ajax_nonce,
-            'wb_spider_auto'   => ! empty( $options['auto_deny'] ) && '1' === $options['auto_deny'] ? '1' : '0',
-            'locale'           => get_locale(),
-            'actpanel_visible' => in_array( get_locale(), array( 'zh_CN', 'zh_TW' ), true ),
-            'prompt'           => $prompt_items,
+            'wbp_security' => $wb_ajax_nonce,
+            'wb_spider_auto' => isset($options['auto_deny']) && $options['auto_deny'] == '1' ? '1' : '0',
+            'locale' => get_locale(),
+            'actpanel_visible' => in_array(get_locale(), ['zh_CN', 'zh_TW'], true),
+            'prompt' => $prompt_items
         );
 
-        wp_localize_script( 'wbs-inline-js', 'wbp_js_cnf', $wb_cnf );
-        echo WB_Vite::vite( 'src/main.js', WP_SPIDER_ANALYSER_PATH . '/assets/wbp/', WP_SPIDER_ANALYSER_URL . '/assets/wbp/' );
+
+        $inline_script = 'var wbp_js_cnf=' . wp_json_encode($wb_cnf) . ';' . "\n";
+        wp_add_inline_script('wbs-inline-js', $inline_script, 'before');
+        echo WB_Vite::vite('src/main.js', WP_SPIDER_ANALYSER_PATH . '/assets/wbp/', WP_SPIDER_ANALYSER_URL . '/assets/wbp/');
     }
 
     /**
-     * Modify script tag to add type="module".
-     * @param string $tag    The <script> tag.
-     * @param string $handle The script's handle.
-     * @param string $src    The script's source URL.
-     * @return string Modified <script> tag.
+     * js输出加type="module"
+     * 适用vite生成module js
+     *
+     * @param [type] $tag
+     * @param [type] $handle
+     * @param [type] $src
+     * @return string
      */
-    public static function script_tag_handler( $tag, $handle, $src ) {
-        if ( preg_match( "/wbs-/i", $handle ) ) {
-            return '<script type="module" src="' . esc_url( $src ) . '" defer></script>' . "\n";
+    public static function script_tag_handler($tag, $handle, $src)
+    {
+        if (preg_match("/wbs-/i", $handle)) {
+            return '<script type="module" src="' . esc_url($src) . '" defer></script>' . "\n";
+        } else {
+            return $tag;
         }
-        return $tag;
     }
 
-    /**
-     * Determine the type of a given URL.
-     * @param string $url The URL to analyze.
-     * @param WP_Post|null $query Passed by reference.
-     * @return string|null The determined URL type.
-     */
+
     public static function match_type($url, &$query = null)
     {
-        global $wp_filter, $wp_query;
-        $cnf = WP_Spider_Analyser_Admin::cnf();  // Correctly call cnf() from Admin class
+        global $wp_filter;
+        self::txt_log('match type fun');
+        $cnf = self::cnf();
+
+        self::txt_log($cnf);
 
         $type = null;
         $old_page = null;
+        $php_self = null;
+        $request_uri = null;
 
-        $request_uri_original = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
-        $php_self_original = isset($_SERVER['PHP_SELF']) ? sanitize_text_field(wp_unslash($_SERVER['PHP_SELF'])) : '';
         $reset_url = false;
 
         do {
-            if (isset($cnf['extral_rule']) && is_array($cnf['extral_rule'])) {
-                foreach ($cnf['extral_rule'] as $r_type => $rule) {
-                    if (!$rule) continue;
-                    $rule_regex = str_replace(array(',', '\\*'), array('|', '.+?'), preg_quote($rule, '#'));
-                    if (preg_match('#(' . $rule_regex . ')#i', $url)) {
-                        $type = $r_type; break;
-                    }
+            if ($cnf['extral_rule']) foreach ($cnf['extral_rule'] as $r_type => $rule) {
+                if (!$rule) {
+                    continue;
+                }
+                $rule = str_replace(array(',', '\\*'), array('|', '.+?'), preg_quote($rule));
+                if (preg_match('#(' . $rule . ')#i', $url)) {
+                    $type = $r_type;
+                    break;
                 }
             }
-            if ($type) break;
+            if ($type) {
+                break;
+            }
 
-            if (isset($cnf['user_rule']) && is_array($cnf['user_rule'])) {
-                foreach ($cnf['user_rule'] as $r) {
-                    if (empty($r['rule']) || empty($r['name'])) continue;
-                    $rule_regex = str_replace(array(',', '\\*'), array('|', '.+?'), preg_quote($r['rule'], '#'));
-                    if (preg_match('#' . $rule_regex . '#i', $url)) {
-                        $type = $r['name']; break;
-                    }
+            //['index','post','page','category','tag','search','author','feed','sitemap','api','other'];
+            if ($cnf['user_rule']) foreach ($cnf['user_rule'] as $r) {
+                if (!$r['rule']) {
+                    continue;
+                }
+                $rule = str_replace(array(',', '\\*'), array('|', '.+?'), preg_quote($r['rule']));
+                if (preg_match('#' . $rule . '#i', $url)) {
+                    $type = $r['name'];
+                    break;
                 }
             }
-            if ($type) break;
+            if ($type) {
+                break;
+            }
 
-            if (preg_match('#/wp-admin/admin-ajax\.php#', $url)) { $type = 'api'; break; }
-            if (preg_match('#^/sitemap(-[a-z0-9_-]+)?\.xml#i', $url)) { $type = 'sitemap'; break; }
-
+            if (preg_match('#/wp-admin/admin-ajax\.php#', $url)) {
+                $type = 'api';
+                break;
+            } else if (preg_match('#^/sitemap(-[a-z0-9_-]+)?\.xml#i', $url)) {
+                $type = 'sitemap';
+                break;
+            }
             $parse = wp_parse_url($url);
             if (isset($parse['query']) && $parse['query']) {
                 parse_str($parse['query'], $param);
-                if (isset($param['s'])) { $type = 'search'; break; }
+                if (isset($param['s'])) {
+                    $type = 'search';
+                    break;
+                }
             }
-            if (empty($parse['path']) || $parse['path'] == '/') { $type = 'index'; break; }
-
-            if ( ! did_action('wp') ) {
-                $type = 'other';
+            if (!$parse['path'] || $parse['path'] == '/') {
+                $type = 'index';
                 break;
             }
+            //if(preg_match('#sitemap#'))
+            $request_uri = $_SERVER['REQUEST_URI'];
+            $php_self = $_SERVER['PHP_SELF'];
+            $path = $parse['path'];
+            if (preg_match('#/?$#', $parse['path'])) {
+                $path = trim($parse['path'], '/') . '/index.php';
+            }
 
-            $wp_temp = new WP();
+            self::txt_log('new wp');
+
+
+
+            $wp = new WP();
             $_SERVER['REQUEST_URI'] = $url;
             $_SERVER['PHP_SELF'] = '/index.php';
             $old_page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : null;
-            if ($old_page !== null) unset($_GET['page']);
+            if ($old_page === null) {
+            } else {
+                unset($_GET['page']);
+            }
             $reset_url = true;
+            self::txt_log('wp parse request');
+            /*ini_set('display_errors',true);
+            ini_set('error_reporting',E_ALL);
+            $old_filter = isset($wp_filter['parse_request'])?$wp_filter['parse_request']:null;
+            remove_all_filters('parse_request');
+            $wp->parse_request($url);
+            if($old_filter){
+                $wp_filter['parse_request'] = $old_filter;
+            }*/
 
-            $wp_temp->query_vars = static::url_help($url);
-            $wp_temp->build_query_string();
+            $wp->query_vars = self::url_help($url);
 
-            $old_wp_filter_parse_query = isset($wp_filter['parse_query']) ? $wp_filter['parse_query'] : null;
+            self::txt_log('wp build query string');
+            $wp->build_query_string();
+            self::txt_log('wp query_vars');
+            self::txt_log($wp->query_vars);
+
+            $old_filter = isset($wp_filter['parse_query']) ? $wp_filter['parse_query'] : null;
             remove_all_filters('parse_query');
 
-            $temp_query = new WP_Query();
-            $temp_query->parse_query($wp_temp->query_vars);
+            $wp_query = new WP_Query();
+            $wp_query->parse_query($wp->query_vars);
 
-            if ($old_wp_filter_parse_query) $wp_filter['parse_query'] = $old_wp_filter_parse_query;
+            if ($old_filter) {
+                $wp_filter['parse_query'] = $old_filter;
+            }
 
-            if ($temp_query->is_author()) { $type = 'author'; break; }
-            if ($temp_query->is_tag()) { $type = 'tag'; break; }
-            if ($temp_query->is_feed()) { $type = 'feed'; break; }
-            if ($temp_query->is_archive()) { $type = 'category'; break; }
+            self::txt_log('wp_query query_vars');
+            self::txt_log($wp_query->query_vars);
 
-            if ($temp_query->is_singular()) {
-                $posts_array = $temp_query->get_posts();
-                if ($posts_array && $posts_array[0] instanceof WP_Post) {
-                    $query = $posts_array[0];
-                    if ($posts_array[0]->post_type == 'page') { $type = 'page'; break; }
+            if ($wp_query->is_author) {
+                $type = 'author';
+                break;
+            }
+            if ($wp_query->is_tag) {
+                $type = 'tag';
+                break;
+            }
+            if ($wp_query->is_feed) {
+                $type = 'feed';
+                break;
+            }
+            if ($wp_query->is_archive) {
+                $type = 'category';
+                break;
+            }
+
+
+            if ($wp_query->is_singular) {
+                //$wp_query->query();
+                //print_r($wp_query->get_posts());
+                $posts = $wp_query->get_posts();
+                if ($posts) {
+                    if ($posts[0] instanceof WP_Post) {
+                        $query = $posts[0];
+                    }
+                    if ($posts[0]->post_type == 'page') {
+                        $type = 'page';
+                        break;
+                    }
                 }
+
                 $type = 'post';
                 break;
             }
+
+
+
+
             $type = 'other';
         } while (0);
 
         if ($reset_url) {
-            if ($old_page !== null) $_GET['page'] = $old_page;
-            $_SERVER['PHP_SELF'] = $php_self_original;
-            $_SERVER['REQUEST_URI'] = $request_uri_original;
+            if ($old_page === null) {
+            } else {
+                $_GET['page'] = $old_page;
+            }
+            //print_r($wp);
+            //print_r($wp_query);
+            $_SERVER['PHP_SELF'] = $php_self;
+            $_SERVER['REQUEST_URI'] = $request_uri;
         }
+
         return $type;
     }
 
-    /**
-     * Helper to parse a URL and determine query variables.
-     * @param string $req_url The request URL.
-     * @return array Array of query variables.
-     */
     public static function url_help($req_url)
     {
         global $wp_rewrite, $wp;
@@ -440,20 +447,34 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         $post_type_query_vars = array();
         $extra_query_vars = array();
 
-        if ($req_url) parse_str($req_url, $extra_query_vars);
 
+        if ($req_url) {
+            parse_str($req_url, $extra_query_vars);
+        }
+
+        // Fetch the rewrite rules.
         $rewrite = $wp_rewrite->wp_rewrite_rules();
 
+
+
         if (!empty($rewrite)) {
+            // If we match a rewrite rule, this will be cleared.
             $error               = '404';
-            $pathinfo         = isset($_SERVER['PATH_INFO']) ? sanitize_text_field(wp_unslash($_SERVER['PATH_INFO'])) : '';
+
+            $pathinfo         = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '';
             list($pathinfo) = explode('?', $pathinfo);
             $pathinfo         = str_replace('%', '%25', $pathinfo);
-            list($req_uri) = explode('?', sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])));
-            $self            = sanitize_text_field(wp_unslash($_SERVER['PHP_SELF']));
+
+            list($req_uri) = explode('?', $_SERVER['REQUEST_URI']);
+            $self            = $_SERVER['PHP_SELF'];
             $home_path       = trim(wp_parse_url(home_url(), PHP_URL_PATH), '/');
             $home_path_regex = sprintf('|^%s|i', preg_quote($home_path, '|'));
 
+            /*
+             * Trim path info from the end and the leading home path from the front.
+             * For path info requests, this leaves us with the requesting filename, if any.
+             * For 404 requests, this leaves us with the requested permalink.
+             */
             $req_uri  = str_replace($pathinfo, '', $req_uri);
             $req_uri  = trim($req_uri, '/');
             $req_uri  = preg_replace($home_path_regex, '', $req_uri);
@@ -465,1054 +486,3056 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
             $self     = preg_replace($home_path_regex, '', $self);
             $self     = trim($self, '/');
 
-            if (!empty($pathinfo) && !preg_match('|^.*' . preg_quote($wp_rewrite->index, '|') . '$|', $pathinfo)) {
+            // The requested permalink is in $pathinfo for path info requests and
+            // $req_uri for other requests.
+            if (!empty($pathinfo) && !preg_match('|^.*' . $wp_rewrite->index . '$|', $pathinfo)) {
                 $requested_path = $pathinfo;
             } else {
-                if ($req_uri == $wp_rewrite->index) $req_uri = '';
+                // If the request uri is the index, blank it out so that we don't try to match it against a rule.
+                if ($req_uri == $wp_rewrite->index) {
+                    $req_uri = '';
+                }
                 $requested_path = $req_uri;
             }
             $requested_file = $req_uri;
-            $request_match = $requested_path;
 
+
+            // Look for matches.
+            $request_match = $requested_path;
             if (empty($request_match)) {
+                // An empty request could only match against ^$ regex.
                 if (isset($rewrite['$'])) {
                     $matched_rule = '$';
-                    $query_string_from_rule = $rewrite['$'];
+                    $query              = $rewrite['$'];
                     $matches            = array('');
                 }
             } else {
-                foreach ((array) $rewrite as $match_pattern => $query_string_from_rule) {
-                    if (!empty($requested_file) && strpos($match_pattern, $requested_file) === 0 && $requested_file != $requested_path) {
+                foreach ((array) $rewrite as $match => $query) {
+                    // If the requested file is the anchor of the match, prepend it to the path info.
+                    if (!empty($requested_file) && strpos($match, $requested_file) === 0 && $requested_file != $requested_path) {
                         $request_match = $requested_file . '/' . $requested_path;
                     }
-                    if ( preg_match("#^$match_pattern#", $request_match, $matches) || preg_match("#^$match_pattern#", urldecode($request_match), $matches) ) {
-                        if ($wp_rewrite->use_verbose_page_rules && preg_match('/pagename=\$matches\[([0-9]+)\]/', $query_string_from_rule, $varmatch)) {
+
+                    if (
+                        preg_match("#^$match#", $request_match, $matches) ||
+                        preg_match("#^$match#", urldecode($request_match), $matches)
+                    ) {
+
+                        if ($wp_rewrite->use_verbose_page_rules && preg_match('/pagename=\$matches\[([0-9]+)\]/', $query, $varmatch)) {
+                            // This is a verbose page match, let's check to be sure about it.
                             $page = get_page_by_path($matches[$varmatch[1]]);
-                            if (!$page) { continue; }
+                            if (!$page) {
+                                continue;
+                            }
+
                             $post_status_obj = get_post_status_object($page->post_status);
-                            if ( !$post_status_obj || (!$post_status_obj->public && !$post_status_obj->protected && !$post_status_obj->private && $post_status_obj->exclude_from_search) ) {
+                            if (
+                                !$post_status_obj->public && !$post_status_obj->protected
+                                && !$post_status_obj->private && $post_status_obj->exclude_from_search
+                            ) {
                                 continue;
                             }
                         }
-                        $matched_rule = $match_pattern;
+
+                        // Got a match.
+                        $matched_rule = $match;
                         break;
                     }
                 }
             }
+
+
             if (isset($matched_rule)) {
-                $query_string_from_rule = preg_replace('!^.+\?!', '', $query_string_from_rule);
-                $query_string_from_rule = addslashes(WP_MatchesMapRegex::apply($query_string_from_rule, $matches));
-                parse_str($query_string_from_rule, $perma_query_vars);
-                if ('404' == $error) unset($error, $_GET['error']);
+                // Trim the query of everything up to the '?'.
+                $query = preg_replace('!^.+\?!', '', $query);
+
+                // Substitute the substring matches into the query.
+                $query = addslashes(WP_MatchesMapRegex::apply($query, $matches));
+
+
+
+                // Parse the query.
+                parse_str($query, $perma_query_vars);
+
+                // If we're processing a 404 request, clear the error var since we found something.
+                if ('404' == $error) {
+                    unset($error, $_GET['error']);
+                }
             }
-            if (empty($requested_path) || $requested_file == $self || strpos(sanitize_text_field(wp_unslash($_SERVER['PHP_SELF'])), 'wp-admin/') !== false) {
+
+            // If req_uri is empty or if it is a request for ourself, unset error.
+            if (empty($requested_path) || $requested_file == $self || strpos($_SERVER['PHP_SELF'], 'wp-admin/') !== false) {
                 unset($error, $_GET['error']);
-                if (isset($perma_query_vars) && strpos(sanitize_text_field(wp_unslash($_SERVER['PHP_SELF'])), 'wp-admin/') !== false) unset($perma_query_vars);
+
+                if (isset($perma_query_vars) && strpos($_SERVER['PHP_SELF'], 'wp-admin/') !== false) {
+                    unset($perma_query_vars);
+                }
             }
         }
 
+        /**
+         * Filters the query variables allowed before processing.
+         *
+         * Allows (publicly allowed) query vars to be added, removed, or changed prior
+         * to executing the query. Needed to allow custom rewrite rules using your own arguments
+         * to work, or any other custom query variables you want to be publicly available.
+         *
+         * @since 1.5.0
+         *
+         * @param string[] $public_query_vars The array of allowed query variable names.
+         */
         $public_query_vars = apply_filters('query_vars', $public_query_vars);
+
         foreach (get_post_types(array(), 'objects') as $post_type => $t) {
-            if (is_post_type_viewable($t) && $t->query_var) $post_type_query_vars[$t->query_var] = $post_type;
+            if (is_post_type_viewable($t) && $t->query_var) {
+                $post_type_query_vars[$t->query_var] = $post_type;
+            }
         }
 
         foreach ($public_query_vars as $wpvar) {
-            if (isset($extra_query_vars[$wpvar])) { $query_vars[$wpvar] = $extra_query_vars[$wpvar];
-            } elseif (isset($_POST[$wpvar])) { $query_vars[$wpvar] = $_POST[$wpvar];
-            } elseif (isset($_GET[$wpvar])) { $query_vars[$wpvar] = $_GET[$wpvar];
-            } elseif (isset($perma_query_vars[$wpvar])) { $query_vars[$wpvar] = $perma_query_vars[$wpvar];}
+            if (isset($extra_query_vars[$wpvar])) {
+                $query_vars[$wpvar] = $extra_query_vars[$wpvar];
+            } elseif (isset($_GET[$wpvar]) && isset($_POST[$wpvar]) && $_GET[$wpvar] !== $_POST[$wpvar]) {
+                wp_die(__('A variable mismatch has been detected.'), __('Sorry, you are not allowed to view this item.'), 400);
+            } elseif (isset($_POST[$wpvar])) {
+                $query_vars[$wpvar] = $_POST[$wpvar];
+            } elseif (isset($_GET[$wpvar])) {
+                $query_vars[$wpvar] = $_GET[$wpvar];
+            } elseif (isset($perma_query_vars[$wpvar])) {
+                $query_vars[$wpvar] = $perma_query_vars[$wpvar];
+            }
 
             if (!empty($query_vars[$wpvar])) {
-                if (!is_array($query_vars[$wpvar])) { $query_vars[$wpvar] = (string) $query_vars[$wpvar];
-                } else { foreach ($query_vars[$wpvar] as $vkey => $v) { if (is_scalar($v)) $query_vars[$wpvar][$vkey] = (string) $v;}}
-                if (isset($post_type_query_vars[$wpvar])) { $query_vars['post_type'] = $post_type_query_vars[$wpvar]; $query_vars['name'] = $query_vars[$wpvar];}
+                if (!is_array($query_vars[$wpvar])) {
+                    $query_vars[$wpvar] = (string) $query_vars[$wpvar];
+                } else {
+                    foreach ($query_vars[$wpvar] as $vkey => $v) {
+                        if (is_scalar($v)) {
+                            $query_vars[$wpvar][$vkey] = (string) $v;
+                        }
+                    }
+                }
+
+                if (isset($post_type_query_vars[$wpvar])) {
+                    $query_vars['post_type'] = $post_type_query_vars[$wpvar];
+                    $query_vars['name']      = $query_vars[$wpvar];
+                }
             }
         }
 
+        // Convert urldecoded spaces back into '+'.
         foreach (get_taxonomies(array(), 'objects') as $taxonomy => $t) {
-            if ($t->query_var && isset($query_vars[$t->query_var])) $query_vars[$t->query_var] = str_replace(' ', '+', $query_vars[$t->query_var]);
-        }
-        if (!is_admin()) {
-            foreach (get_taxonomies(array('publicly_queryable' => false), 'objects') as $taxonomy => $t) {
-                if (isset($query_vars['taxonomy']) && $taxonomy === $query_vars['taxonomy']) unset($query_vars['taxonomy'], $query_vars['term']);
+            if ($t->query_var && isset($query_vars[$t->query_var])) {
+                $query_vars[$t->query_var] = str_replace(' ', '+', $query_vars[$t->query_var]);
             }
         }
+
+        // Don't allow non-publicly queryable taxonomies to be queried from the front end.
+        if (!is_admin()) {
+            foreach (get_taxonomies(array('publicly_queryable' => false), 'objects') as $taxonomy => $t) {
+                /*
+                 * Disallow when set to the 'taxonomy' query var.
+                 * Non-publicly queryable taxonomies cannot register custom query vars. See register_taxonomy().
+                 */
+                if (isset($query_vars['taxonomy']) && $taxonomy === $query_vars['taxonomy']) {
+                    unset($query_vars['taxonomy'], $query_vars['term']);
+                }
+            }
+        }
+
+        // Limit publicly queried post_types to those that are 'publicly_queryable'.
         if (isset($query_vars['post_type'])) {
             $queryable_post_types = get_post_types(array('publicly_queryable' => true));
             if (!is_array($query_vars['post_type'])) {
-                if (!in_array($query_vars['post_type'], $queryable_post_types, true)) unset($query_vars['post_type']);
-            } else { $query_vars['post_type'] = array_intersect($query_vars['post_type'], $queryable_post_types);}
+                if (!in_array($query_vars['post_type'], $queryable_post_types, true)) {
+                    unset($query_vars['post_type']);
+                }
+            } else {
+                $query_vars['post_type'] = array_intersect($query_vars['post_type'], $queryable_post_types);
+            }
         }
+
+        // Resolve conflicts between posts with numeric slugs and date archive queries.
         $query_vars = wp_resolve_numeric_slug_conflicts($query_vars);
-        foreach ((array) $private_query_vars as $var) { if (isset($extra_query_vars[$var])) $query_vars[$var] = $extra_query_vars[$var];}
-        if (isset($error)) $query_vars['error'] = $error;
+
+        foreach ((array) $private_query_vars as $var) {
+            if (isset($extra_query_vars[$var])) {
+                $query_vars[$var] = $extra_query_vars[$var];
+            }
+        }
+
+        if (isset($error)) {
+            $query_vars['error'] = $error;
+        }
 
         return $query_vars;
     }
 
-    /**
-     * Generate chart data for spider visits.
-     * @param int    $day Number of days.
-     * @param int    $type Type of data.
-     * @param int    $compare Comparison flag.
-     * @param string|null $spider Specific spider.
-     * @return array Chart data.
-     */
-    public static function chart_data( $day, $type, $compare = 0, $spider = null ) {
-        $db = static::db();
-        $current_timestamp = current_time( 'timestamp', true );
-        $time = $current_timestamp - ( DAY_IN_SECONDS * $day );
 
-        if ( $compare ) {
-            $time -= DAY_IN_SECONDS * ( $day > 0 ? $day : 1 );
-        }
-
-        $ymd_base = gmdate( 'Y-m-d', $time );
-        $table_log = $db->prefix . 'wb_spider_log';
-        $xdata     = array();
-        $date_condition_sql = '';
-        $date_format_sql    = '';
-
-        if ( $day > 2 ) {
-            $date_format_sql = '%m/%d';
-            for ( $i = 0; $i < $day; $i++ ) {
-                $xdata[] = gmdate( 'm/d', strtotime( $ymd_base . " +{$i} days" ) );
-            }
-            $ymd_start = $ymd_base . ' 00:00:00';
-            $ymd_end   = gmdate( 'Y-m-d 23:59:59', strtotime( $ymd_base . " +" . ( $day - 1 ) . " days" ) );
-            $date_condition_sql = $db->prepare( "visit_date >= %s AND visit_date <= %s", $ymd_start, $ymd_end );
-
-        } else {
-            $date_format_sql = '%H:00-%H:59';
-            for ( $i = 0; $i < 24; $i++ ) {
-                $xdata[] = $i < 10 ? ( '0' . $i . ':00-0' . $i . ':59' ) : ( '' . $i . ':00-' . $i . ':59' );
-            }
-            $ymd_start   = $ymd_base . ' 00:00:00';
-            $ymd_day_end = $ymd_base . ' 23:59:59';
-            $date_condition_sql = $db->prepare( "visit_date >= %s AND visit_date <= %s", $ymd_start, $ymd_day_end );
-        }
-
-        $select_fields_subquery = "`visit_date`, `spider`";
-
-        $where_spider_sql = '';
-        if ( $spider ) {
-            $where_spider_sql = $db->prepare( " AND `spider` = %s", $spider );
-        }
-
-        $sql = $db->prepare(
-            "SELECT COUNT(1) AS num, COUNT(DISTINCT `spider`) AS distinct_spider_count, DATE_FORMAT(`visit_date`, %s) AS ymd
-             FROM (
-                 SELECT {$select_fields_subquery}
-                 FROM `{$table_log}`
-                 WHERE {$date_condition_sql} {$where_spider_sql}
-             ) AS a
-             GROUP BY ymd
-             ORDER BY ymd",
-            $date_format_sql
-        );
-
-        $list = $db->get_results( $sql );
-        $tmp = array();
-        if ( $list ) {
-            foreach ( $list as $r ) {
-                if ( 2 === $type ) {
-                    $tmp[ $r->ymd ] = (int) $r->num;
-                } elseif ( 3 === $type ) {
-                    $tmp[ $r->ymd ] = $r->distinct_spider_count > 0 ? ceil( (int)$r->num / (int)$r->distinct_spider_count ) : 0;
-                } else {
-                    $tmp[ $r->ymd ] = (int) $r->distinct_spider_count;
-                }
-            }
-        }
-
-        $ydata = array();
-        foreach ( $xdata as $v_key ) {
-            $ydata[] = isset( $tmp[ $v_key ] ) ? $tmp[ $v_key ] : 0;
-        }
-        return array( $xdata, $ydata );
-    }
-
-    /**
-     * Get the thumbnail URL for a spider.
-     * @param string $spider_name The spider name.
-     * @return string Thumbnail URL or placeholder.
-     */
-    protected static function get_spider_thumbnail_url(string $spider_name): string {
-        static $bot_info_cache = null;
-        if (null === $bot_info_cache) {
-            $bot_info_cache = static::read_spider_info();
-        }
-
-        $spider_key = strtolower($spider_name);
-        if ($bot_info_cache && isset($bot_info_cache[$spider_key]['thumb']) && !empty($bot_info_cache[$spider_key]['thumb'])) {
-            return esc_url($bot_info_cache[$spider_key]['thumb']);
-        }
-        return 'https://static.wbolt.com/wp-content/uploads/2025/02/unknown-bot.svg';
-    }
-
-    /**
-     * Handle AJAX requests for settings and data operations.
-     */
-    public static function spider_analyser_ajax_save() {
-        $op_raw = static::param('op');
-        if (!$op_raw) $op_raw = static::param('op', '', 'g');
-        if (!$op_raw) wp_die();
-
-        $op = sanitize_key($op_raw);
-
-        $arrow = [
-            'list', 'stop', 'clean_log', 'clean_all', 'verify', 'reset',
-            'options', 'update_setting', 'get_localize', 'get_comparison'
-        ];
-        if ( ! in_array( $op, $arrow, true ) ) wp_die();
-
-        if ( ! current_user_can( 'manage_options' ) ) {
-            static::ajax_resp( array( 'code' => 1, 'desc' => esc_html__('Permission Denied.', WB_SPA_DM) ) );
-        }
-
-        if (!check_ajax_referer('wp_ajax_wb_spider_analyser', '_ajax_nonce', false)) {
-            static::ajax_resp(array('code' => 1, 'desc' => esc_html__('Nonce verification failed.', WB_SPA_DM)));
-        }
-
-        switch ( $op ) {
-            case 'list':
-                $ret = array( 'code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM) );
-                do {
-                    $skip_param = static::param( 'skip' );
-                    if ( $skip_param ) {
-                        if ( is_array( $skip_param ) ) {
-                            $skips = static::array_sanitize_text_field( $skip_param );
-                            foreach ( $skips as $single_skip ) {
-                                static::skip_spider( $single_skip );
-                                static::delete_log( array( 'spider' => $single_skip ) );
-                            }
-                        } else {
-                            $spider_to_skip = trim( sanitize_text_field( $skip_param ) );
-                            static::skip_spider( $spider_to_skip );
-                            static::delete_log( array( 'spider' => $spider_to_skip ) );
-                        }
-                        static::ajax_resp($ret);
-                        return;
-                    }
-
-                    $db = static::db();
-                    $q_raw  = static::param( 'q' );
-                    $q = $q_raw;
-                    if ( $q && is_array( $q ) ) {
-                        $q_sanitized = [];
-                        $q_sanitized['day'] = isset($q['day']) ? intval($q['day']) : -1;
-                        if(isset($q['code'])) $q_sanitized['code'] = sanitize_text_field($q['code']);
-                        if(isset($q['bot_type'])) $q_sanitized['bot_type'] = sanitize_text_field($q['bot_type']);
-                        if(isset($q['spider'])) $q_sanitized['spider'] = sanitize_text_field($q['spider']);
-                        if(isset($q['name'])) $q_sanitized['name'] = sanitize_text_field($q['name']);
-                        $q = $q_sanitized;
-                    } else {
-                        $q = ['day' => -1];
-                    }
-
-                    $day = $q['day'];
-                    $table_spider_log = $db->prefix . 'wb_spider_log';
-                    $table_spider     = $db->prefix . 'wb_spider';
-                    $where_conditions = array();
-                    $total_where_conditions = array();
-
-                    if ( $day > -1 ) {
-                        $time_timestamp = current_time( 'timestamp', true ) - ( DAY_IN_SECONDS * $day );
-                        $ymd_param_start = gmdate( 'Y-m-d 00:00:00', $time_timestamp );
-                        if ( $day >= 1 ) {
-                             $current_day_end_gmt = gmdate( 'Y-m-d 23:59:59', current_time('timestamp', true) );
-                             $where_conditions[] = $db->prepare( "a.visit_date >= %s AND a.visit_date <= %s", $ymd_param_start, $current_day_end_gmt );
-                             $total_where_conditions[] = $db->prepare( "visit_date >= %s AND visit_date <= %s", $ymd_param_start, $current_day_end_gmt );
-                        } else {
-                             $ymd_param_end   = gmdate( 'Y-m-d 23:59:59', $time_timestamp );
-                             $where_conditions[] = $db->prepare( "a.visit_date >= %s AND a.visit_date <= %s", $ymd_param_start, $ymd_param_end );
-                             $total_where_conditions[] = $db->prepare( "visit_date >= %s AND visit_date <= %s", $ymd_param_start, $ymd_param_end );
-                        }
-                    }
-
-                    if ( ! empty( $q['code'] ) ) $where_conditions[] = $db->prepare( "a.code = %s", $q['code'] );
-                    if ( ! empty( $q['bot_type'] ) ) $where_conditions[] = $db->prepare( "b.bot_type = %s", $q['bot_type'] );
-                    if ( ! empty( $q['spider'] ) ) $where_conditions[] = $db->prepare( "a.spider = %s", $q['spider'] );
-                    if ( ! empty( $q['name'] ) ) $where_conditions[] = $db->prepare( "a.spider REGEXP %s", $q['name'] );
-
-                    $num = absint( static::param( 'num', 30 ) );
-                    if ( ! $num ) $num = 30;
-                    $page = absint( static::param( 'page', 1 ) );
-                    if ( ! $page ) $page = 1;
-                    $offset = max( 0, ( $page - 1 ) * $num );
-
-                    $where_sql = '1=1';
-                    if ( ! empty( $where_conditions ) ) $where_sql = implode( ' AND ', $where_conditions );
-                    $total_where_sql = '1=1';
-                    if ( ! empty( $total_where_conditions ) ) $total_where_sql = implode( ' AND ', $total_where_conditions );
-
-                    $allowed_sort_columns_list = ['num', 'last_visit', 'spider', 'bot_type'];
-                    $order_by_column = 'num';
-                    $sort_param = sanitize_key( static::param( 'sort' ) );
-
-                    if ( 'type' === $sort_param ) $order_by_column = 'b.bot_type';
-                    elseif (in_array($sort_param, $allowed_sort_columns_list, true)) {
-                        $order_by_column = ($sort_param === 'spider') ? 'a.spider' : $sort_param;
-                        if ($sort_param === 'last_visit') $order_by_column = 'last_visit';
-                    }
-
-                    $sort_order_param = sanitize_key( static::param( 'order' ) );
-                    $order_direction = ( 'asc' === strtolower( $sort_order_param ) ) ? 'ASC' : 'DESC';
-                    $order_by_prefix = in_array($order_by_column, ['num', 'last_visit']) ? '' : (strpos($order_by_column, '.') === false ? 'a.' : '');
-                    if ($order_by_column === 'b.bot_type') $order_by_prefix = '';
-
-                    $order_by_sql = ($order_by_column === 'num' || $order_by_column === 'last_visit')
-                                    ? "{$order_by_column} {$order_direction}"
-                                    : "{$order_by_prefix}" . esc_sql($order_by_column) . " {$order_direction}";
-
-                    $cache_param = array( 'list', $where_sql, $order_by_sql, $total_where_sql, $offset, $num, $q_raw );
-                    $cache_file  = static::cache( $cache_param );
-                    if ( $cache_file ) { include $cache_file; wp_die(); }
-
-                    $total_query = "SELECT COUNT(1) FROM `{$table_spider_log}` WHERE {$total_where_sql}";
-                    $total = $db->get_var( $total_query );
-
-                    $sql = "SELECT SQL_CALC_FOUND_ROWS a.spider, COUNT(1) AS num, MAX(a.visit_date) AS last_visit, b.bot_type, b.bot_url, b.status AS udg
-                            FROM `{$table_spider_log}` a
-                            LEFT JOIN `{$table_spider}` b ON a.spider = b.name
-                            WHERE {$where_sql}
-                            GROUP BY a.spider
-                            ORDER BY {$order_by_sql}
-                            LIMIT %d, %d";
-                    $list = $db->get_results( $db->prepare( $sql, $offset, $num ) );
-                    $row_total = $db->get_var( "SELECT FOUND_ROWS()" );
-
-                    if ( $list ) {
-                        foreach ( $list as $r ) {
-                            $r->thumb = static::get_spider_thumbnail_url( $r->spider );
-                            $r->rate = $total > 0 ? round( ( (int)$r->num / (int)$total ) * 100, 2 ) : 0;
-                        }
-                    }
-                    $ret = array(
-                        'num'   => $num,
-                        'total' => (int)$row_total,
-                        'code'  => 0,
-                        'data'  => $list ?: [],
-                    );
-                    static::cache( $cache_param, $ret, 3600 );
-                } while ( 0 );
-                static::ajax_resp( $ret );
-                break;
-
-            case 'stop':
-                $ret = array( 'code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM), 'data' => array(), 'total' => 0 );
-                do {
-                    if ( ! get_option( 'wb_spider_analyser_ver', 0 ) ) {
-                        $ret['desc'] = esc_html__('This is a Pro version feature.', WB_SPA_DM);
-                        $ret['code'] = 1;
-                        break;
-                    }
-
-                    $db = static::db();
-                    $table_spider_ip = $db->prefix . 'wb_spider_ip';
-                    $action_taken = false;
-
-                    $add_params_raw = static::param( 'add', null );
-                    if ( $add_params_raw && is_array( $add_params_raw ) ) {
-                        $action_taken = true;
-                        $name = isset($add_params_raw[0]) ? sanitize_text_field($add_params_raw[0]) : '';
-                        $ip_input = isset($add_params_raw[1]) ? $add_params_raw[1] : '';
-                        $cid_param_raw = static::param( 'cid' );
-                        $cid = 4;
-                        if ( $cid_param_raw && in_array( intval( $cid_param_raw ), array( 11, 12, 13, 14, 15, 16, 17 ), true ) ) {
-                            $cid = intval( $cid_param_raw );
-                        }
-                        $db->suppress_errors();
-                        if ( is_array( $ip_input ) ) {
-                            $ip_addresses = array_map('sanitize_text_field', $ip_input);
-                            foreach ( $ip_addresses as $single_ip ) {
-                                if (empty($name) && empty($single_ip)) continue;
-                                $insert_sql = $db->prepare( "INSERT INTO `{$table_spider_ip}` (`name`, `ip`, `status`) VALUES (%s, %s, %d)", $name, $single_ip, $cid );
-                                if ( ! $db->query( $insert_sql ) ) {
-                                    $db->query( $db->prepare( "UPDATE `{$table_spider_ip}` SET status = %d WHERE name = %s AND ip = %s", $cid, $name, $single_ip ) );
-                                }
-                                static::delete_log( array( 'spider' => $name, 'ip' => $single_ip ) );
-                            }
-                        } elseif ( is_string($ip_input) ) {
-                            $ip_address = sanitize_text_field($ip_input);
-                            if ( $ip_address || $name ) {
-                                $insert_sql = $db->prepare( "INSERT INTO `{$table_spider_ip}` (`name`, `ip`, `status`) VALUES (%s, %s, %d)", $name, $ip_address, $cid );
-                                if ( ! $db->query( $insert_sql ) ) {
-                                     $db->query( $db->prepare( "UPDATE `{$table_spider_ip}` SET status = %d WHERE name = %s AND ip = %s", $cid, $name, $ip_address ) );
-                                }
-                                static::delete_log( array( 'spider' => $name, 'ip' => $ip_address ) );
-                            }
-                        }
-                        $db->suppress_errors( false );
-                        static::clear_cache();
-                    }
-
-                    $removes_params_raw = static::param( 'removes', null );
-                    if ( !$action_taken && $removes_params_raw && is_array( $removes_params_raw ) ) {
-                        $action_taken = true;
-                        foreach ($removes_params_raw as $r_item_raw) {
-                            if (is_array($r_item_raw) && count($r_item_raw) >= 2) {
-                                $r_name = sanitize_text_field($r_item_raw[0]);
-                                $r_ip = sanitize_text_field($r_item_raw[1]);
-                                $db->query( $db->prepare( "DELETE FROM `{$table_spider_ip}` WHERE status = 15 AND name = %s AND ip = %s", $r_name, $r_ip ) );
-                                $db->query( $db->prepare( "UPDATE `{$table_spider_ip}` SET status = 1 WHERE name = %s AND ip = %s", $r_name, $r_ip ) );
-                            }
-                        }
-                        $db->query( "DELETE FROM `{$table_spider_ip}` WHERE ip = '' AND status = 1" );
-                        $db->query( "DELETE FROM `{$table_spider_ip}` WHERE ip LIKE '%.*' AND status = 1" );
-                        static::clear_cache();
-                    }
-
-                    $remove_params_raw = static::param( 'remove', null );
-                    if ( !$action_taken && $remove_params_raw && is_array( $remove_params_raw ) ) {
-                        $action_taken = true;
-                         if (count($remove_params_raw) >= 2) {
-                            $name_to_remove = sanitize_text_field($remove_params_raw[0]);
-                            $ip_to_remove = sanitize_text_field($remove_params_raw[1]);
-                            if ( $name_to_remove || $ip_to_remove ) {
-                                $db->query( $db->prepare( "DELETE FROM `{$table_spider_ip}` WHERE status = 15 AND name = %s AND ip = %s", $name_to_remove, $ip_to_remove ) );
-                                $db->query( $db->prepare( "UPDATE `{$table_spider_ip}` SET status = 1 WHERE name = %s AND ip = %s", $name_to_remove, $ip_to_remove ) );
-                            }
-                        }
-                        $db->query( "DELETE FROM `{$table_spider_ip}` WHERE ip = '' AND status = 1" );
-                        $db->query( "DELETE FROM `{$table_spider_ip}` WHERE ip LIKE '%.*' AND status = 1" );
-                        static::clear_cache();
-                    }
-
-                    $new_params_raw = static::param( 'new', null );
-                    if ( !$action_taken && $new_params_raw && is_array( $new_params_raw ) ) {
-                        $action_taken = true;
-                        $name_new = isset($new_params_raw[0]) ? sanitize_text_field($new_params_raw[0]) : '';
-                        $ip_input_new = isset($new_params_raw[1]) ? $new_params_raw[1] : '';
-                        $cid_param_new_raw = static::param( 'cid', 0 );
-                        $cid_new = intval( $cid_param_new_raw );
-                        if ( ! $cid_new || ! in_array( $cid_new, array( 11, 12, 13, 14, 15, 16, 17 ), true ) ) $cid_new = 4;
-
-                        $db->suppress_errors();
-                        if ( is_array( $ip_input_new ) ) {
-                             $ip_addresses_new = array_map('sanitize_text_field', $ip_input_new);
-                            foreach ( $ip_addresses_new as $single_ip_new ) {
-                                if (empty($name_new) && empty($single_ip_new)) continue;
-                                $insert_sql = $db->prepare( "INSERT INTO `{$table_spider_ip}` (`name`, `ip`, `status`) VALUES (%s, %s, %d)", $name_new, $single_ip_new, $cid_new );
-                                if ( ! $db->query( $insert_sql ) ) {
-                                    $db->query( $db->prepare( "UPDATE `{$table_spider_ip}` SET status = %d WHERE name = %s AND ip = %s", $cid_new, $name_new, $single_ip_new ) );
-                                }
-                                static::delete_log( array( 'spider' => $name_new, 'ip' => $single_ip_new ) );
-                            }
-                        } elseif ( is_string($ip_input_new) ) {
-                            $ip_address_new = sanitize_text_field($ip_input_new);
-                             if ( $ip_address_new || $name_new ) {
-                                 $insert_sql = $db->prepare( "INSERT INTO `{$table_spider_ip}` (`name`, `ip`, `status`) VALUES (%s, %s, %d)", $name_new, $ip_address_new, $cid_new );
-                                if ( ! $db->query( $insert_sql ) ) {
-                                    $db->query( $db->prepare( "UPDATE `{$table_spider_ip}` SET status = %d WHERE name = %s AND ip = %s", $cid_new, $name_new, $ip_address_new ) );
-                                }
-                                static::delete_log( array( 'spider' => $name_new, 'ip' => $ip_address_new ) );
-                            }
-                        } elseif ( is_array( $name_new ) ) {
-                             $names_new = array_map('sanitize_text_field', $name_new);
-                             $ip_address_single_new = sanitize_text_field($ip_input_new);
-                            foreach ( $names_new as $single_name_new ) {
-                                if (empty($single_name_new) && empty($ip_address_single_new)) continue;
-                                $insert_sql = $db->prepare( "INSERT INTO `{$table_spider_ip}` (`name`, `ip`, `status`) VALUES (%s, %s, %d)", $single_name_new, $ip_address_single_new, $cid_new );
-                                if ( ! $db->query( $insert_sql ) ) {
-                                    $db->query( $db->prepare( "UPDATE `{$table_spider_ip}` SET status = %d WHERE name = %s AND ip = %s", $cid_new, $single_name_new, $ip_address_single_new ) );
-                                }
-                                static::delete_log( array( 'spider' => $single_name_new, 'ip' => $ip_address_single_new ) );
-                            }
-                        }
-                        $db->suppress_errors( false );
-                        static::clear_cache();
-                    }
-
-                    if ($action_taken) {
-                        static::ajax_resp($ret);
-                        return;
-                    }
-
-                    $where_conditions_stop = array();
-                    $query_status = intval( static::param( 'status', 0 ) );
-
-                    if ( $query_status ) {
-                        if ( 4 === $query_status ) $where_conditions_stop[] = "(status = 4 OR status > 10)";
-                        else $where_conditions_stop[] = $db->prepare( "status = %d", $query_status );
-                    } else {
-                        $where_conditions_stop[] = "(status = 4 OR status > 10)";
-                    }
-
-                    $type_filter = intval( static::param( 'type', 0 ) );
-                    if ( $type_filter ) {
-                        if ( 5 === $type_filter ) $where_conditions_stop[] = $db->prepare( "status = %d", 15 );
-                        elseif ( 1 === $type_filter ) $where_conditions_stop[] = "(`name` <> '' AND (`ip` = '' OR `ip` IS NULL))";
-                        elseif ( 2 === $type_filter ) $where_conditions_stop[] = "(`ip` <> '' AND `ip` NOT LIKE '%.*' AND (`name` = '' OR `name` IS NULL))";
-                        elseif ( 3 === $type_filter ) $where_conditions_stop[] = "(`ip` LIKE '%.*' AND (`name` = '' OR `name` IS NULL))";
-                        elseif ( 4 === $type_filter ) $where_conditions_stop[] = "(`ip` <> '' AND `name` <> '')";
-                    }
-
-                    $path_filter = intval( static::param( 'path', 0 ) );
-                    if ( $path_filter && in_array($path_filter, [11,12,13,14,15,16,17])) {
-                        $where_conditions_stop[] = $db->prepare( "status = %d", $path_filter );
-                    }
-
-                    $keyword_filter = sanitize_text_field( static::param( 'kw' ) );
-                    if ( $keyword_filter ) {
-                        $where_conditions_stop[] = $db->prepare( "(`name` LIKE %s OR `ip` LIKE %s)", '%' . $db->esc_like( $keyword_filter ) . '%', '%' . $db->esc_like( $keyword_filter ) . '%' );
-                    }
-
-                    $num_per_page = absint( static::param( 'num', 30 ) );
-                    if ( ! $num_per_page ) $num_per_page = 30;
-                    $current_page = absint( static::param( 'page', 1 ) );
-                    if ( ! $current_page ) $current_page = 1;
-                    $offset_val = max( 0, ( $current_page - 1 ) * $num_per_page );
-
-                    $where_sql_stop = '1=1';
-                    if ($where_conditions_stop) $where_sql_stop = implode( ' AND ', $where_conditions_stop );
-
-                    $cache_param_list = array( 'stop_list', $where_sql_stop, $offset_val, $num_per_page );
-                    $cache_file_list  = static::cache( $cache_param_list );
-                    if ( $cache_file_list ) { include $cache_file_list; wp_die(); }
-
-                    $sql_query = $db->prepare( "SELECT SQL_CALC_FOUND_ROWS `id`, `name`, `ip`, `status`, `add_time` FROM `{$table_spider_ip}` WHERE {$where_sql_stop} ORDER BY `add_time` DESC LIMIT %d, %d", $offset_val, $num_per_page );
-                    $list_items = $db->get_results( $sql_query );
-                    $total_items = $db->get_var( "SELECT FOUND_ROWS()" );
-
-                    $ret = array(
-                        'num'   => $num_per_page,
-                        'total' => (int)$total_items,
-                        'code'  => 0,
-                        'data'  => $list_items ?: [],
-                    );
-                    static::cache( $cache_param_list, $ret, 3600 );
-
-                } while ( 0 );
-                static::ajax_resp( $ret );
-                break;
-
-            case 'clean_log':
-                $db = static::db();
-                $ret = array( 'code' => 0, 'desc' => esc_html__('All logs and rules cleared.', WB_SPA_DM) );
-                $tables_to_truncate = array( 'wb_spider_sum', 'wb_spider_visit', 'wb_spider_log', 'wb_spider_post', 'wb_spider_post_link', 'wb_spider_ip' );
-                foreach ( $tables_to_truncate as $table_name_suffix ) {
-                    $table_name = $db->prefix . $table_name_suffix;
-                    $db->query( "TRUNCATE TABLE `{$table_name}`" );
-                }
-                static::clear_cache();
-                static::ajax_resp( $ret );
-                break;
-
-            case 'clean_all':
-                $ret = array( 'code' => 0, 'desc' => esc_html__('All custom block/allow rules have been reset.', WB_SPA_DM) );
-                $db = static::db();
-                $table_spider_ip = $db->prefix . 'wb_spider_ip';
-                $db->query( "DELETE FROM `{$table_spider_ip}` WHERE (status = 4 OR status > 10)" );
-                static::clear_cache();
-                static::ajax_resp( $ret );
-                break;
-
-            case 'update_setting':
-                $data = WP_Spider_Analyser_Admin::update_cnf();
-                $ret  = array( 'code' => 0, 'desc' => esc_html__('Settings updated.', WB_SPA_DM), 'data' => $data );
-                static::ajax_resp( $ret );
-                break;
-
-            case 'verify':
-                $ret = array( 'code' => 1, 'desc' => esc_html__('Verification failed.', WB_SPA_DM) );
-                $param_key  = sanitize_text_field( static::param( 'key' ) );
-                $param_host = sanitize_text_field( static::param( 'host' ) );
-                $api_params = array( 'code' => $param_key, 'host' => $param_host, 'ver'  => 'spider-analyser');
-                $err = '';
-                do {
-                    if ( empty( $api_params['code'] ) || empty( $api_params['host'] ) ) {
-                        $err = _x( 'Invalid request, parameters missing.', 'ajax response', WB_SPA_DM ); break;
-                    }
-                    $http_args = array( 'timeout'   => 30, 'sslverify' => true, 'body' => $api_params, 'headers' => array( 'referer' => home_url() ) );
-                    $response = wp_remote_post( 'https://www.wbolt.com/wb-api/v1/verify', $http_args );
-
-                    if ( is_wp_error( $response ) ) {
-                        $err = sprintf( _x( 'Verification request failed. Please try again later. (Error: %s)', 'ajax response', WB_SPA_DM ), $response->get_error_message() ); break;
-                    }
-                    $response_code = wp_remote_retrieve_response_code( $response );
-                    if ( 200 !== $response_code ) {
-                        $err = sprintf( _x( 'Verification server returned an error. Please try again. (Code: %s)', 'ajax response', WB_SPA_DM ), $response_code ); break;
-                    }
-                    $body = wp_remote_retrieve_body( $response );
-                    if ( empty( $body ) ) { $err = _x( 'Verification response was empty. Please contact support. (Error 010)', 'ajax response', WB_SPA_DM ); break; }
-                    $data = json_decode( $body, true );
-                    if ( null === $data || !is_array($data) ) { $err = _x( 'Invalid response from verification server. Please contact support. (Error 011)', 'ajax response', WB_SPA_DM ); break; }
-
-                    if ( ! empty( $data['code'] ) && 0 !== (int)$data['code'] ) {
-                        $err_msg_from_api = '';
-                        switch((int)$data['code']){
-                            case 100: case 101: case 102: case 103: $err_msg_from_api = sprintf(_x( 'Plugin configuration parameter error. Code: %s', 'ajax response', WB_SPA_DM ), (int)$data['code']); break;
-                            case 200: $err_msg_from_api = _x( 'Invalid key provided. Please enter the correct key. (Code: 200)', 'ajax response', WB_SPA_DM ); break;
-                            case 201: $err_msg_from_api = _x( 'Key usage limit exceeded. (Code: 201)', 'ajax response', WB_SPA_DM ); break;
-                            case 202: case 203: case 204: $err_msg_from_api = sprintf(_x( 'Verification server error. Please contact support. Code: %s', 'ajax response', WB_SPA_DM ), (int)$data['code']); break;
-                            default: $err_msg_from_api = isset($data['desc']) ? sanitize_text_field($data['desc']) : sprintf(_x('An unknown error occurred. Code: %s', 'ajax response', WB_SPA_DM), (int)$data['code']);
-                        }
-                        $err = $err_msg_from_api; break;
-                    } elseif ( empty( $data['v'] ) || empty( $data['data'] ) ) { $err = _x( 'Verification data is incomplete. Please contact support. (Error 004)', 'ajax response', WB_SPA_DM ); break; }
-
-                    $verified_version = sanitize_text_field($data['v']);
-                    update_option( 'wb_spider_analyser_ver', $verified_version, 'yes' );
-                    update_option( 'wb_spider_analyser_cnf_' . $verified_version, $data['data'], 'yes' );
-                    $ret['code'] = 0; $ret['desc'] = esc_html__('Plugin verified successfully.', WB_SPA_DM);
-                } while ( false );
-                if ( $err ) $ret['desc'] = $err;
-                static::ajax_resp( $ret );
-                break;
-
-            case 'reset':
-                $ver = get_option( 'wb_spider_analyser_ver', 0 );
-                if ( ! $ver ) {
-                    static::ajax_resp( array( 'code' => 0, 'desc' => esc_html__('Plugin is not currently verified.', WB_SPA_DM) ) );
-                } else {
-                    delete_option( 'wb_spider_analyser_ver' );
-                    delete_option( 'wb_spider_analyser_cnf_' . sanitize_key($ver) );
-                    $ret = array( 'code' => 0, 'desc' => esc_html__('Plugin verification has been reset.', WB_SPA_DM) );
-                    static::ajax_resp( $ret );
-                }
-                break;
-
-            case 'options':
-                $ver = get_option( 'wb_spider_analyser_ver', 0 );
-                $cnf_options_data = '';
-                if ( $ver ) $cnf_options_data = get_option( 'wb_spider_analyser_cnf_' . sanitize_key($ver), '' );
-                static::ajax_resp( array( 'o' => $cnf_options_data ) );
-                break;
-
-            case 'get_localize':
-                static::ajax_resp(array( 'code' => 0, 'desc' => 'success', 'data' => static::localize_ajax_handle()));
-                break;
-
-            case 'get_comparison':
-                $comparison_data = class_exists('WBP') && method_exists('WBP', 'wb_get_json_fields')
-                                   ? WBP::wb_get_json_fields( 'comparison.json', __DIR__ . '/json/' ) : array();
-                static::ajax_resp(array( 'code' => 0, 'desc' => 'success', 'data' => $comparison_data));
-                break;
-        }
-        wp_die();
-    }
-
-    /**
-     * Handle general AJAX requests for fetching data for the admin interface.
-     * Hooked to 'wp_ajax_spider_analyser'.
-     */
-    public static function spider_analyser_ajax()
+    public static function chart_data($day, $type, $compare = 0, $spider = null)
     {
-        $op_raw = static::param('op');
-        if (!$op_raw) $op_raw = static::param('op', '', 'g');
-        if (!$op_raw) wp_die();
+        // global $wpdb;
 
-        $op = sanitize_key($op_raw);
-
-        $arrow = ['code', 'top_url', 'top_spider', 'summary', 'log', 'log_cnf', 'stop_cnf', 'path_cnf', 'path', 'ip', 'post', 'get_setting', 'promote', 'chk_ver', 'down_log', 'spider_history'];
-        if (!in_array($op, $arrow, true)) wp_die();
-
-        if (!current_user_can('manage_options')) {
-            static::ajax_resp(['code' => 1, 'desc' => esc_html__('Permission Denied.', WB_SPA_DM)]);
+        $db = self::db();
+        $time = strtotime(current_time('mysql'));
+        if ($day) {
+            $time = $time - 86400 * $day;
         }
 
-        $nonce_actions = ['promote', 'down_log'];
-        if (in_array($op, $nonce_actions, true)) {
-            if (!check_ajax_referer('wp_ajax_wb_spider_analyser', '_ajax_nonce', false)) {
-                static::ajax_resp(['code' => 1, 'desc' => esc_html__('Nonce verification failed.', WB_SPA_DM)]);
+        if ($compare) {
+            $time = $time - 86400 * ($day > 0 ? $day : 1);
+        }
+        $ymd = gmdate('Y-m-d', $time);
+        $t = $db->prefix . 'wb_spider_log';
+
+        if ($day > 2) {
+            //group by h
+            $format = '%m/%d';
+            $op = '>=';
+
+            $xdata = [];
+            for ($i = 0; $i < $day; $i++) {
+                $xdata[] = gmdate('m/d', $time + $i * 86400);
             }
+        } else {
+            $format = '%H:00-%H:59';
+            $op = '=';
+            $xdata = [];
+
+            for ($i = 0; $i < 24; $i++) {
+                $xdata[] = $i < 10 ? ('0' . $i . ':00-0' . $i . ':59') : ('' . $i . ':00-' . $i . ':59');
+            }
+        }
+        $filed_more = '';
+        $group_more = '';
+        $where_more = '';
+        /*if ($type == 3) {
+            $filed_more = ',code';
+            $group_more = ',code';
+            $where_more = ' AND code IN(200,301,302,404)';
+        }*/
+
+        if ($spider) {
+            $where_more = $db->prepare(" AND spider = %s", $spider);
+        }
+
+        $sql = "SELECT COUNT(1) num,COUNT(DISTINCT spider) spider,DATE_FORMAT(visit_date,'$format') ymd $filed_more FROM (SELECT * FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd' $where_more) AS a GROUP BY ymd $group_more ORDER BY ymd";
+        $list = $db->get_results($sql);
+        $tmp = [];
+        foreach ($list as $r) {
+            if ($type == 2) {
+                $tmp[$r->ymd] = $r->num;
+            } else if ($type == 3) {
+                $tmp[$r->ymd] = $r->spider > 0 ? ceil($r->num / $r->spider) : 0;
+
+                //$tmp[$r->ymd] = $r->spider > 0 ? ceil($r->num/$r->spider) : 0;
+                /*if (!isset($tmp[$r->ymd])) {
+                    $tmp[$r->ymd] = [];
+                }
+                $code = in_array($r->code, ['301', '302']) ? '301/302' : $r->code;
+                $tmp[$r->ymd][$code] = isset($tmp[$r->ymd][$code]) ?  $tmp[$r->ymd][$code] + $r->num : $r->num;*/
+            } else {
+                $tmp[$r->ymd] = $r->spider;
+            }
+        }
+
+        $ydata = [];
+        $codes = ['200', '301/302', '404'];
+        $empty = 0;
+        /*if ($type == 3) {
+            $empty = [];
+            foreach ($codes as $c) {
+                $ydata[$c] = [];
+                $empty[$c] = 0;
+            }
+        }*/
+
+        foreach ($xdata as $v) {
+            /*if ($type == 3) {
+                $val = isset($tmp[$v]) ? $tmp[$v] : $empty;
+                foreach ($codes as $c) {
+                    $ydata[$c][] = isset($val[$c]) ? $val[$c] : 0;
+                }
+            } else {
+                $ydata[] = isset($tmp[$v]) ? $tmp[$v] : $empty;
+            }*/
+            $ydata[] = isset($tmp[$v]) ? $tmp[$v] : $empty;
+        }
+
+        return [$xdata, $ydata];
+    }
+
+
+    public static function  array_sanitize_text_field($value)
+    {
+        if (is_array($value)) {
+            foreach ($value as $k => $v) {
+                $value[$k] = self::array_sanitize_text_field($v);
+            }
+            return $value;
+        } else {
+            return sanitize_text_field($value);
+        }
+    }
+
+
+    public static function spider_analyser_ajax_save()
+    {
+        $op = sanitize_text_field(self::param('op'));
+        if (!$op) {
+            $op = sanitize_text_field(self::param('op', '', 'g'));
+        }
+        if (!$op) {
+            return;
+        }
+        $arrow = [
+            'list',
+            'stop',
+            'clean_log',
+            'clean_all',
+            'verify',
+            'reset',
+            'options',
+            'update_setting',
+            'get_localize',
+            'get_comparison'
+        ];
+        if (!in_array($op, $arrow)) {
+            return;
+        }
+        if (!current_user_can('manage_options')) {
+            self::ajax_resp(['code' => 1, 'desc' => 'deny']);
+            return;
+        }
+
+        if (!wp_verify_nonce(sanitize_text_field(self::param('_ajax_nonce')), 'wp_ajax_wb_spider_analyser')) {
+            self::ajax_resp(['code' => 1, 'desc' => 'illegal']);
+            return;
         }
 
         switch ($op) {
-            case 'code':
-                $ret = ['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM)];
+            case 'list':
+                $ret = array('code' => 0, 'desc' => 'success');
                 do {
-                    $day = (int) static::param('day', 7);
-                    $db = static::db(); $table_log = $db->prefix . 'wb_spider_log';
-                    $current_timestamp = current_time('timestamp', true);
-                    $start_timestamp = $current_timestamp - (DAY_IN_SECONDS * $day);
-                    $start_date_gmt = gmdate('Y-m-d H:i:s', $start_timestamp);
-                    $end_date_gmt = gmdate('Y-m-d H:i:s', $current_timestamp);
-                    $sql = $db->prepare("SELECT `code`, COUNT(1) AS num FROM `{$table_log}` WHERE visit_date >= %s AND visit_date <= %s GROUP BY `code` ORDER BY num DESC LIMIT 10", $start_date_gmt, $end_date_gmt);
-                    $ret['data'] = $db->get_results($sql) ?: [];
-                } while (0);
-                static::ajax_resp($ret);
-                break;
-            case 'top_url':
-                $ret = ['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM)];
-                do {
-                    $day = (int) static::param('day', 7);
-                    $db = static::db(); $table_log = $db->prefix . 'wb_spider_log';
-                    $current_timestamp = current_time('timestamp', true);
-                    $start_timestamp = $current_timestamp - (DAY_IN_SECONDS * $day);
-                    $start_date_gmt = gmdate('Y-m-d H:i:s', $start_timestamp);
-                    $end_date_gmt = gmdate('Y-m-d H:i:s', $current_timestamp);
-                    $sql = $db->prepare("SELECT `visit_url`, COUNT(1) AS num FROM `{$table_log}` WHERE visit_date >= %s AND visit_date <= %s GROUP BY `visit_url` ORDER BY num DESC LIMIT 10", $start_date_gmt, $end_date_gmt);
-                    $ret['data'] = $db->get_results($sql) ?: [];
-                } while (0);
-                static::ajax_resp($ret);
-                break;
-            case 'top_spider':
-                $ret = ['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM)];
-                do {
-                    $day = (int) static::param('day', 7);
-                    $db = static::db(); $table_log = $db->prefix . 'wb_spider_log';
-                    $current_timestamp = current_time('timestamp', true);
-                    $start_timestamp = $current_timestamp - (DAY_IN_SECONDS * $day);
-                    $start_date_gmt = gmdate('Y-m-d H:i:s', $start_timestamp);
-                    $end_date_gmt = gmdate('Y-m-d H:i:s', $current_timestamp);
-                    $sql = $db->prepare("SELECT `spider`, COUNT(1) AS num FROM `{$table_log}` WHERE visit_date >= %s AND visit_date <= %s GROUP BY `spider` ORDER BY num DESC LIMIT 10", $start_date_gmt, $end_date_gmt);
-                    $list = $db->get_results($sql);
-                    if ($list) {
-                        foreach ($list as $r) $r->thumb = static::get_spider_thumbnail_url( $r->spider );
+                    $skip = self::param('skip');
+
+                    if ($skip) {
+
+                        if (is_array($skip)) {
+                            $skips = self::array_sanitize_text_field($skip);
+                            foreach ($skips as $skip) {
+                                self::skip_spider($skip);
+                                self::delete_log(['spider' => $skip]);
+                            }
+                        } else {
+                            $spider = trim(sanitize_text_field($skip));
+                            self::skip_spider($spider);
+                            self::delete_log(['spider' => $spider]);
+                        }
+                        break;
                     }
-                    $ret['data'] = $list ?: [];
-                } while (0);
-                static::ajax_resp($ret);
-                break;
-            case 'summary':
-                $ret = ['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM)];
-                do {
-                    $day = (int) static::param('day', 7);
-                    $db = static::db(); $table_log = $db->prefix . 'wb_spider_log';
-                    $current_timestamp = current_time('timestamp', true);
-                    $start_timestamp = $current_timestamp - (DAY_IN_SECONDS * $day);
-                    $start_date_gmt = gmdate('Y-m-d H:i:s', $start_timestamp);
-                    $end_date_gmt = gmdate('Y-m-d H:i:s', $current_timestamp);
 
-                    $total = $db->get_var($db->prepare("SELECT COUNT(1) FROM `{$table_log}` WHERE visit_date >= %s AND visit_date <= %s", $start_date_gmt, $end_date_gmt));
-                    $spider_count = $db->get_var($db->prepare("SELECT COUNT(DISTINCT spider) FROM `{$table_log}` WHERE visit_date >= %s AND visit_date <= %s", $start_date_gmt, $end_date_gmt));
-                    $url_count = $db->get_var($db->prepare("SELECT COUNT(DISTINCT visit_url) FROM `{$table_log}` WHERE visit_date >= %s AND visit_date <= %s", $start_date_gmt, $end_date_gmt));
-                    $data = ['total' => (int)$total, 'spider' => (int)$spider_count, 'url' => (int)$url_count];
-                    $type_row = $db->get_row($db->prepare("SELECT `code`, COUNT(1) AS num FROM `{$table_log}` WHERE visit_date >= %s AND visit_date <= %s GROUP BY `code` ORDER BY num DESC LIMIT 1", $start_date_gmt, $end_date_gmt));
-                    $data['code'] = $type_row ? $type_row->code : '-';
-                    $ret['data'] = $data;
-                } while (0);
-                static::ajax_resp($ret);
-                break;
-            case 'log':
-            case 'path':
-            case 'ip':
-            case 'post':
-                $ret = ['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM)];
-                do {
-                    $q_raw = static::param('q'); $q = [];
-                    $q['day'] = isset($q_raw['day']) ? intval($q_raw['day']) : -1;
-                    if (isset($q_raw['code'])) $q['code'] = sanitize_text_field($q_raw['code']);
-                    if (isset($q_raw['name'])) $q['name'] = sanitize_text_field($q_raw['name']);
-                    if (isset($q_raw['ip'])) $q['ip'] = sanitize_text_field($q_raw['ip']);
-                    if (isset($q_raw['url'])) $q['url'] = esc_url_raw($q_raw['url']);
-                    if (isset($q_raw['type'])) $q['type'] = sanitize_text_field($q_raw['type']);
-                    if (isset($q_raw['post_id'])) $q['post_id'] = intval($q_raw['post_id']);
 
-                    $db = static::db(); $day = $q['day']; $table_log = $db->prefix . 'wb_spider_log';
-                    $where_conditions = [];
 
+                    $db = self::db();
+                    $q = self::param('q');
+                    if ($q && is_array($q)) {
+                        $q = self::array_sanitize_text_field($q);
+                    }
+
+                    $day = isset($q['day']) ? intval($q['day']) : -1;
+                    $t2 = $db->prefix . 'wb_spider';
+                    $t = $db->prefix . 'wb_spider_log';
+                    $where = array();
+                    $total_where = array();
                     if ($day > -1) {
-                        $time_timestamp = current_time('timestamp', true) - (DAY_IN_SECONDS * $day);
-                        $ymd_param_start = gmdate('Y-m-d 00:00:00', $time_timestamp);
-                        $ymd_param_end = ($day >= 1) ? gmdate('Y-m-d 23:59:59', current_time('timestamp', true)) : gmdate('Y-m-d 23:59:59', $time_timestamp);
-                        $where_conditions[] = $db->prepare("visit_date >= %s AND visit_date <= %s", $ymd_param_start, $ymd_param_end );
+                        $time = strtotime(current_time('mysql'));
+                        if ($day) {
+                            $time = $time - 86400 * $day;
+                        }
+                        $ymd = gmdate('Y-m-d', $time);
+
+                        $op = '=';
+                        if ($day > 1) {
+                            $op = '>=';
+                        }
+
+                        $where[] = "DATE_FORMAT(a.visit_date,'%Y-%m-%d') $op '$ymd'";
+                        $total_where[] = "DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd'";
+                    }
+                    if (!empty($q['code'])) {
+                        $where[] = $db->prepare("a.code=%s", $q['code']);
+                    }
+                    if (!empty($q['bot_type'])) {
+                        $where[] = $db->prepare("b.bot_type = %s", $q['bot_type']);
+                    }
+                    if (!empty($q['spider'])) {
+                        $where[] = $db->prepare("a.spider = %s", $q['spider']);
+                    }
+                    if (!empty($q['name'])) {
+                        $where[] = $db->prepare("a.spider REGEXP %s", preg_quote($q['name']));
+                    }
+                    $num = absint(self::param('num', 30));
+                    if (!$num) {
+                        $num = 30;
+                    }
+                    $page = absint(self::param('page', 1));
+                    if (!$page) {
+                        $page = 1;
                     }
 
-                    if (!empty($q['code'])) $where_conditions[] = $db->prepare("code = %s", $q['code']);
-                    if (!empty($q['name'])) $where_conditions[] = $db->prepare("spider = %s", $q['name']);
-                    if ('ip' === $op && !empty($q['ip'])) $where_conditions[] = $db->prepare("ip = %s", $q['ip']);
-                    if (!empty($q['url'])) $where_conditions[] = $db->prepare("visit_url = %s", $q['url']);
-                    if ('path' === $op && !empty($q['type'])) $where_conditions[] = $db->prepare("visit_type = %s", $q['type']);
-                    if ('post' === $op && !empty($q['post_id']) && $q['post_id'] > 0) $where_conditions[] = $db->prepare("post_id = %d", $q['post_id']);
-
-                    $num = absint(static::param('num', 30)); $num = $num ?: 30;
-                    $page = absint(static::param('page', 1)); $page = $page ?: 1;
                     $offset = max(0, ($page - 1) * $num);
-                    $where_sql = $where_conditions ? implode(' AND ', $where_conditions) : '1=1';
 
-                    $cache_param = [$op, $where_sql, $offset, $num, static::param('sort'), static::param('order'), $q_raw];
-                    if ($cache_file = static::cache($cache_param)) { include $cache_file; wp_die(); }
-
-                    $allowed_sort_columns = ['id', 'spider', 'visit_url', 'ip', 'code', 'visit_date', 'visit_type', 'post_id'];
-                    $order_by_column = 'id'; $sort_param = sanitize_key(static::param('sort'));
-                    if (in_array($sort_param, $allowed_sort_columns, true)) $order_by_column = $sort_param;
-                    elseif ('name' === $sort_param) $order_by_column = 'spider';
-                    elseif ('type' === $sort_param) {
-                        if ('path' === $op) $order_by_column = 'visit_type';
-                        elseif ('log' === $op) $order_by_column = 'code';
-                        else $order_by_column = 'spider';
+                    if ($where) {
+                        $where = implode(' AND ', $where);
+                    } else {
+                        $where = '1=1';
                     }
-                    $order_direction = ('asc' === strtolower(sanitize_key(static::param('order')))) ? 'ASC' : 'DESC';
-                    $order_by_sql = "`" . esc_sql($order_by_column) . "` {$order_direction}";
 
-                    $select_columns = "`id`, `spider`, `visit_url`, `ip`, `code`, `visit_date`, `visit_type`, `post_id`";
-                    $sql = $db->prepare("SELECT SQL_CALC_FOUND_ROWS {$select_columns} FROM `{$table_log}` WHERE {$where_sql} ORDER BY {$order_by_sql} LIMIT %d, %d", $offset, $num);
-                    $list = $db->get_results($sql);
-                    $total = $db->get_var("SELECT FOUND_ROWS()");
-                    if ($list) { foreach ($list as $r) $r->thumb = static::get_spider_thumbnail_url( $r->spider ); }
+                    if ($total_where) {
+                        $total_where = implode(' AND ', $total_where);
+                    } else {
+                        $total_where = '1=1';
+                    }
 
-                    $ret = ['num' => $num, 'total' => (int)$total, 'code' => 0, 'data' => $list ?: []];
-                    static::cache($cache_param, $ret, 3600);
-                } while (0);
-                static::ajax_resp($ret);
-                break;
-            case 'log_cnf':
-                static::ajax_resp(['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM), 'data' => static::spider_log()]);
-                break;
-            case 'stop_cnf':
-                static::ajax_resp(['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM), 'data' => static::spider_list_stop()]);
-                break;
-            case 'path_cnf':
-                static::ajax_resp(['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM), 'data' => static::spider_path()]);
-                break;
-            case 'get_setting':
-                static::ajax_resp(['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM), 'data' => WP_Spider_Analyser_Admin::get_cnf()]);
-                break;
-            case 'promote':
-                $ret = ['code' => 1, 'desc' => esc_html__('Promotion check failed.', WB_SPA_DM)];
-                $params = [
-                    'pd_code' => 'spider-analyser', 'pd_name' => __('Spider Analyser', WB_SPA_DM),
-                    'pd_version' => WP_SPIDER_ANALYSER_VERSION, 'site_name' => get_bloginfo('name'),
-                    'site_url' => site_url(), 'host' => isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '',
-                    'type' => sanitize_key(static::param('type', 'promote'))
-                ];
-                $http_args = ['timeout' => 15, 'sslverify' => true, 'body' => $params, 'headers' => ['referer' => site_url()]];
-                $resp = wp_remote_post('https://www.wbolt.com/wb-api/v1/promote', $http_args);
-                if (!is_wp_error($resp)) {
-                    $body = wp_remote_retrieve_body($resp);
-                    if ($body) {
-                        $data = json_decode($body, true);
-                        if ($data && isset($data['code']) && 0 === (int)$data['code']) {
-                            $ret = ['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM)];
-                            if (isset($data['data'])) $ret['data'] = static::array_sanitize_text_field($data['data']);
-                        } elseif ($data && isset($data['desc'])) {
-                            $ret['desc'] = sanitize_text_field($data['desc']);
+                    $order_by = 'num';
+                    $sort = sanitize_text_field(self::param('sort'));
+                    if ($sort == 'type') {
+                        $order_by = 'a.spider';
+                    } else if (in_array($sort, ['num', 'last_visit', 'spider'])) {
+                        if ($sort == 'num') {
+                            $order_by = $sort;
+                        } else {
+                            $order_by = 'a.' . $sort;
                         }
                     }
-                } else { $ret['desc'] = $resp->get_error_message(); }
-                static::ajax_resp($ret);
-                break;
-            case 'chk_ver':
-                $params = [
-                    'pd_code' => 'spider-analyser', 'pd_name' => __('Spider Analyser', WB_SPA_DM),
-                    'pd_version' => WP_SPIDER_ANALYSER_VERSION, 'locale' => get_locale(),
-                    'host' => isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '',
-                    'type' => 'check', 'ver' => get_option('wb_spider_analyser_ver', 0)
-                ];
-                $http_args = ['timeout' => 15, 'sslverify' => true, 'body' => $params, 'headers' => ['referer' => site_url()]];
-                $resp = wp_remote_post('https://www.wbolt.com/wb-api/v1/version', $http_args);
+                    $sort_order = sanitize_text_field(self::param('order'));
+                    $order_by .=  $sort_order == 'asc' ? ' ASC' : ' DESC';
 
-                if (is_wp_error($resp)) {
-                    error_log(sprintf('Spider Analyser Version Check API Error: %s', $resp->get_error_message()));
-                    static::ajax_resp(['code' => 1, 'desc' => sprintf(esc_html__('API Error: %s', WB_SPA_DM), $resp->get_error_message())]);
-                }
-                $body = wp_remote_retrieve_body($resp);
-                if (!$body) {
-                    error_log('Spider Analyser Version Check API Error: Empty response.');
-                    static::ajax_resp(['code' => 1, 'desc' => esc_html__('API Error: Empty response.', WB_SPA_DM)]);
-                }
-                $data = json_decode($body, true);
-                if (!$data || !isset($data['code'])) {
-                    error_log('Spider Analyser Version Check API Error: Invalid JSON.');
-                    static::ajax_resp(['code' => 1, 'desc' => esc_html__('API Error: Invalid JSON.', WB_SPA_DM)]);
-                }
-
-                if ($data['code'] === 0 && isset($data['data']['version']) && version_compare($data['data']['version'], WP_SPIDER_ANALYSER_VERSION, '>')) {
-                    $plugin_file = plugin_basename(WP_SPIDER_ANALYSER_BASE_FILE);
-                    $update_transient = get_site_transient('update_plugins');
-                    if (!$update_transient) $update_transient = new \stdClass();
-                    if (!isset($update_transient->response)) $update_transient->response = [];
-
-                    $update_transient->response[$plugin_file] = (object) [
-                        'slug' => 'spider-analyser', 'plugin' => $plugin_file,
-                        'new_version' => sanitize_text_field($data['data']['version']),
-                        'url' => isset($data['data']['url']) ? esc_url_raw($data['data']['url']) : '',
-                        'package' => isset($data['data']['package']) ? esc_url_raw($data['data']['package']) : '',
-                        'tested' => isset($data['data']['tested']) ? sanitize_text_field($data['data']['tested']) : '',
-                        'requires_php' => isset($data['data']['requires_php']) ? sanitize_text_field($data['data']['requires_php']) : '',
-                    ];
-                    set_site_transient('update_plugins', $update_transient);
-                    static::ajax_resp(['code' => 0, 'desc' => esc_html__('Update transient set.', WB_SPA_DM)]);
-                } else {
-                    static::ajax_resp(['code' => 0, 'desc' => esc_html__('No new version or API indicated no update.', WB_SPA_DM)]);
-                }
-                break;
-            case 'down_log':
-                $ret = ['code' => 1, 'desc' => esc_html__('Log download failed.', WB_SPA_DM)];
-                do {
-                    $q_raw = static::param('q'); $q = [];
-                    $q['day'] = isset($q_raw['day']) ? intval($q_raw['day']) : -1;
-                    if (isset($q_raw['code'])) $q['code'] = sanitize_text_field($q_raw['code']);
-                    if (isset($q_raw['name'])) $q['name'] = sanitize_text_field($q_raw['name']);
-                    if (isset($q_raw['ip'])) $q['ip'] = sanitize_text_field($q_raw['ip']);
-                    if (isset($q_raw['url'])) $q['url'] = esc_url_raw($q_raw['url']);
-
-                    $db = static::db(); $day = $q['day']; $table_log = $db->prefix . 'wb_spider_log';
-                    $where_conditions = [];
-
-                    if ($day > -1) {
-                        $time_timestamp = current_time('timestamp', true) - (DAY_IN_SECONDS * $day);
-                        $ymd_param_start = gmdate('Y-m-d 00:00:00', $time_timestamp);
-                        $ymd_param_end = ($day >= 1) ? gmdate('Y-m-d 23:59:59', current_time('timestamp', true)) : gmdate('Y-m-d 23:59:59', $time_timestamp);
-                        $where_conditions[] = $db->prepare("visit_date >= %s AND visit_date <= %s", $ymd_param_start, $ymd_param_end);
+                    $cache_param = ['list', $where, $order_by, $total_where, $offset];
+                    $cache_file = self::cache($cache_param);
+                    if ($cache_file) {
+                        include $cache_file;
                     }
 
-                    if (!empty($q['code'])) $where_conditions[] = $db->prepare("code = %s", $q['code']);
-                    if (!empty($q['name'])) $where_conditions[] = $db->prepare("spider = %s", $q['name']);
-                    if (!empty($q['ip'])) $where_conditions[] = $db->prepare("ip = %s", $q['ip']);
-                    if (!empty($q['url'])) $where_conditions[] = $db->prepare("visit_url = %s", $q['url']);
+                    $total = $db->get_var("SELECT COUNT(1) total FROM $t WHERE $total_where");
 
-                    $where_sql = $where_conditions ? implode(' AND ', $where_conditions) : '1=1';
+                    $sql = "SELECT SQL_CALC_FOUND_ROWS a.spider,COUNT(1) num,MAX(a.visit_date) last_visit,b.bot_type,b.bot_url,b.status AS udg FROM $t a LEFT JOIN $t2 b ON a.spider=b.name WHERE $where GROUP BY a.spider ORDER BY $order_by ";
+                    //$list = $db->get_results($sql);
+                    $list = $db->get_results($sql . " LIMIT $offset,$num");
 
-                    $select_columns = "`id`, `spider`, `visit_url`, `ip`, `code`, `visit_date`, `visit_type`, `post_id`";
-                    $sql = "SELECT {$select_columns} FROM `{$table_log}` WHERE {$where_sql} ORDER BY id DESC";
+                    $row_total = $db->get_var("SELECT FOUND_ROWS()");
+
+                    // $not_found = array();
+                    $bot_info = self::read_spider_info();
+
+                    foreach ($list as $r) {
+                        $r->thumb = '';
+                        $bot_key = strtolower($r->spider);
+                        if ($bot_info && isset($bot_info[$bot_key])) {
+                            $r->thumb = $bot_info[$bot_key]['thumb'] ?? '';
+                        }
+                        if (!$r->thumb) {
+                            $r->thumb = 'https://static.wbolt.com/wp-content/uploads/2025/02/unknown-bot.svg';
+                        }
+                        $r->rate = round($r->num / $total * 100, 2);
+                    }
+                    /*$t2 = $db->prefix . 'wb_spider';
+                    $t = $db->prefix . 'wb_spider_log';*/
+
+                    $ret = array(
+                        //'sql'=>$sql,
+                        'num' => $num,
+                        'total' => $row_total,
+                        'code' => 0,
+                        'data' => $list,
+                    );
+                    self::cache($cache_param, $ret, 3600);
+                } while (0);
+
+                self::ajax_resp($ret);
+                break;
+            case 'stop':
+
+                $ret = array('code' => 0, 'desc' => 'success', 'data' => [], 'total' => 0);
+                do {
+
+                    if (!get_option('wb_spider_analyser_ver', 0)) {
+                        break;
+                    }
+                    $add = self::param('add', null);
+                    if ($add && is_array($add)) {
+
+                        $db = self::db();
+                        $t = $db->prefix . 'wb_spider_ip';
+                        $add_data = self::array_sanitize_text_field($add);
+                        list($name, $ip) = $add_data;
+                        $cid = self::param('cid');
+                        if ($cid && in_array($cid, [11, 12, 13, 14, 15, 16, 17])) {
+                            $cid = intval($cid);
+                        } else {
+                            $cid = 4;
+                        }
+                        $db->suppress_errors();
+                        if (is_array($ip)) {
+
+                            //$ret['ips'] = $ip;
+
+                            foreach ($ip as $v) {
+                                $sql = $db->prepare("INSERT INTO $t(`name`, `ip`, `status`) VALUES(%s, %s, $cid)", $name, $v);
+                                if (!$db->query($sql)) {
+                                    $sql = $db->prepare("UPDATE $t SET status=$cid WHERE name=%s AND ip=%s", $name, $v);
+                                    $db->query($sql);
+                                }
+                                self::delete_log(['spider' => $name, 'ip' => $v]);
+                            }
+                        } else if ($ip || $name) {
+                            $sql = $db->prepare("INSERT INTO $t(`name`, `ip`, `status`) VALUES(%s, %s, $cid)", $name, $ip);
+                            if (!$db->query($sql)) {
+                                $sql = $db->prepare("UPDATE $t SET status=$cid WHERE name=%s AND ip=%s", $name, $ip);
+                                $db->query($sql);
+                            }
+                            self::delete_log(['spider' => $name, 'ip' => $ip]);
+                        }
+
+
+                        break;
+                    }
+
+                    $removes = self::param('removes', null);
+                    if ($removes && is_array($removes)) {
+
+                        $db = self::db();
+                        $t = $db->prefix . 'wb_spider_ip';
+                        $removes = self::array_sanitize_text_field($removes);
+                        foreach ($removes as $r) {
+                            $db->query("DELETE FROM $t WHERE status=15 AND " . $db->prepare("name=%s AND ip=%s", $r[0], $r[1]));
+                            $sql = $db->prepare("UPDATE $t SET status=1 WHERE name=%s AND ip=%s", $r[0], $r[1]);
+                            $db->query($sql);
+                        }
+
+                        $db->query("DELETE FROM $t WHERE ip = '' AND status=1");
+                        $db->query("DELETE FROM $t WHERE ip LIKE '%.*' AND status=1");
+                        self::clear_cache();
+                        break;
+                    }
+                    $remove = self::param('remove', null);
+                    if ($remove && is_array($remove)) {
+
+                        $db = self::db();
+                        $t = $db->prefix . 'wb_spider_ip';
+                        $remove = self::array_sanitize_text_field($remove);
+                        list($name, $ip) =  $remove;
+                        if ($name || $ip) {
+                            $db->query("DELETE FROM $t WHERE status=15 AND " . $db->prepare("name=%s AND ip=%s", $name, $ip));
+                            $sql = $db->prepare("UPDATE $t SET status=1 WHERE name=%s AND ip=%s", $name, $ip);
+                            $db->query($sql);
+                        }
+
+                        $db->query("DELETE FROM $t WHERE ip = '' AND status=1");
+                        $db->query("DELETE FROM $t WHERE ip LIKE '%.*' AND status=1");
+                        self::clear_cache();
+
+                        break;
+                    }
+
+                    $new = self::param('new', null);
+                    if ($new && is_array($new)) {
+
+                        $db = self::db();
+                        $t = $db->prefix . 'wb_spider_ip';
+                        $new_data = self::array_sanitize_text_field($new);
+                        list($name, $ip) =  $new_data;
+                        $cid = intval(self::param('cid', 0));
+                        if (!$cid || !in_array($cid, [11, 12, 13, 14, 15, 16, 17])) {
+                            $cid = 4;
+                        }
+                        $db->suppress_errors();
+                        if ($ip && is_array($ip)) {
+                            //$ret['ips'] = $ip;
+                            foreach ($ip as $v) {
+                                $sql = $db->prepare("INSERT INTO $t(`name`, `ip`, `status`) VALUES(%s, %s, $cid)", $name, $v);
+                                if (!$db->query($sql)) {
+                                    $sql = $db->prepare("UPDATE $t SET status=$cid WHERE name=%s AND ip=%s", $name, $v);
+                                    $db->query($sql);
+                                }
+                                self::delete_log(['spider' => $name, 'ip' => $v]);
+                            }
+                        } else if ($name && is_array($name)) {
+                            foreach ($name as $v) {
+                                $sql = $db->prepare("INSERT INTO $t(`name`, `ip`, `status`) VALUES(%s, %s, $cid)", $v, $ip);
+                                if (!$db->query($sql)) {
+                                    $sql = $db->prepare("UPDATE $t SET status=$cid WHERE name=%s AND ip=%s", $v, $ip);
+                                    $db->query($sql);
+                                }
+                                self::delete_log(['spider' => $v, 'ip' => $ip]);
+                            }
+                        } else if ($ip || $name) {
+                            $sql = $db->prepare("INSERT INTO $t(`name`, `ip`, `status`) VALUES(%s, %s, $cid)", $name, $ip);
+                            if (!$db->query($sql)) {
+                                $sql = $db->prepare("UPDATE $t SET status=$cid WHERE name=%s AND ip=%s", $name, $ip);
+                                $db->query($sql);
+                            }
+                            self::delete_log(['spider' => $name, 'ip' => $ip]);
+                        }
+
+                        self::clear_cache();
+                        break;
+                    }
+
+
+                    $db = self::db();
+                    $t = $db->prefix . 'wb_spider_ip';
+                    $query_status = intval(self::param('status', 0));
+                    if ($query_status) {
+                        if ($query_status == 4) {
+                            $where = "(status=4 OR status>10)";
+                        } else {
+                            $where = "status=" . $query_status;
+                        }
+                    } else {
+                        $where = "(status=4 OR status>10)";
+                    }
+
+                    $type = intval(self::param('type', 0));
+                    if ($type) { //['全部','名称','IP','IP段','名称及IP','自定义']
+                        if ($type == 5) {
+                            $where .= $db->prepare(" AND `status`=%d", 15);
+                        } else if ($type == 1) {
+                            $where .= " AND `name` <> '' AND (`ip` = '' OR `ip` IS NULL)";
+                        } else if ($type == 2) {
+                            $where .= " AND `ip` <> '' AND (`name` = '' OR `name` IS NULL)";
+                        } else if ($type == 3) {
+                            $where .= " AND `ip` LIKE '*' AND (`name` = '' OR `name` IS NULL)";
+                        } else if ($type == 4) {
+                            $where .= " AND `ip` <> '' AND `name` <> ''";
+                        }
+                    }
+                    $path = intval(self::param('path', 0));
+                    if ($path) {
+                        $where .= $db->prepare(" AND `status`=%d", $path);
+                    }
+
+                    $kw = sanitize_text_field(self::param('kw'));
+                    if ($kw) {
+                        $where .= $db->prepare(" AND (`name` LIKE %s OR `ip` LIKE %s)", '%' . $kw . '%', '%' . $kw . '%');
+                    }
+
+                    $num = absint(self::param('num', 30));
+                    if (!$num) {
+                        $num = 30;
+                    }
+                    $page = absint(self::param('page', 1));
+                    if (!$page) {
+                        $page = 1;
+                    }
+
+                    $offset = max(0, ($page - 1) * $num);
+
+                    $cache_param = ['stop', $where, $offset, $num];
+                    $cache_file = self::cache($cache_param);
+                    if ($cache_file) {
+                        include $cache_file;
+                    }
+                    $sql = "SELECT SQL_CALC_FOUND_ROWS * FROM $t WHERE $where LIMIT $offset,$num";
+
                     $list = $db->get_results($sql);
 
-                    if (!$list) { $ret['desc'] = __('No logs found for the selected criteria.', WB_SPA_DM); break; }
+                    $total = $db->get_var("SELECT FOUND_ROWS()");
+                    $ret = array(
+                        //'sql'=>$sql,
+                        'num' => $num,
+                        'total' => $total,
+                        'code' => 0,
+                        'data' => $list,
+                    );
 
-                    $filename = 'spider_analyser_logs_' . gmdate('YmdHis') . '.csv';
-                    header('Content-Type: text/csv; charset=utf-8');
-                    header('Content-Disposition: attachment; filename=' . sanitize_file_name($filename));
-                    header('Pragma: no-cache'); header('Expires: 0');
-
-                    $output = fopen('php://output', 'w');
-                    fwrite($output, "\xEF\xBB\xBF");
-
-                    fputcsv($output, [
-                        __('ID', WB_SPA_DM), __('Spider Name', WB_SPA_DM), __('Visit URL', WB_SPA_DM),
-                        __('IP Address', WB_SPA_DM), __('Response Code', WB_SPA_DM), __('Visit Date (UTC)', WB_SPA_DM),
-                        __('Visit Type', WB_SPA_DM), __('Post ID', WB_SPA_DM)
-                    ]);
-                    foreach ($list as $row) {
-                        fputcsv($output, [$row->id, $row->spider, $row->visit_url, $row->ip, $row->code, $row->visit_date, $row->visit_type, $row->post_id]);
-                    }
-                    fclose($output); exit;
+                    self::cache($cache_param, $ret, 3600);
                 } while (0);
-                static::ajax_resp($ret);
+
+                header('content-type:text/json;');
+                echo wp_json_encode($ret);
+                exit();
+                break;
+            case 'clean_log':
+                $db = self::db();
+                $ret = array('code' => 0, 'desc' => 'success');
+                foreach (array('wb_spider_sum', 'wb_spider_visit', 'wb_spider_log', 'wb_spider_post', 'wb_spider_post_link', 'wb_spider_ip') as $v) {
+                    $t = $db->prefix . $v;
+                    $db->query("TRUNCATE $t");
+                }
+                self::clear_cache();
+                self::ajax_resp($ret);
+                break;
+
+
+            case 'clean_all':
+                $ret = array('code' => 0, 'desc' => 'fail');
+                $db = self::db();
+                $t = $db->prefix . 'wb_spider_ip';
+                $db->query("DELETE FROM $t  WHERE (status=4 OR status>10)");
+                $db->query("DELETE FROM $t WHERE ip = '' AND status=1");
+                $db->query("DELETE FROM $t WHERE ip LIKE '%.*' AND status=1");
+                $ret['desc'] = 'success';
+                self::clear_cache();
+                self::ajax_resp($ret);
+                break;
+            case 'update_setting':
+
+                $data = WP_Spider_Analyser_Admin::update_cnf();
+                $ret = array('code' => 0, 'desc' => 'success', 'data' => $data);
+                self::ajax_resp($ret);
+
+                break;
+
+            case 'verify':
+                $ret = ['code' => 1, 'desc' => 'fail'];
+                $param = array(
+                    'code' => sanitize_text_field(self::param('key')),
+                    'host' => sanitize_text_field(self::param('host')),
+                    'ver' => 'spider-analyser',
+                );
+                $err = '';
+                do {
+                    if (empty($param['code']) || empty($param['host'])) {
+                        $err = _x('不合法请求，参数无效', 'ajax返回提示', WB_SPA_DM);
+                        break;
+                    }
+
+                    $http = wp_remote_post('https://www.wbolt.com/wb-api/v1/verify', array('timeout' => 30, 'sslverify' => false, 'body' => $param, 'headers' => array('referer' => home_url()),));
+                    if (is_wp_error($http)) {
+                        $err = _x('校验失败，请稍后再试（错误代码001）', 'ajax返回提示', WB_SPA_DM) . '[' . $http->get_error_message() . ']';
+                        break;
+                    }
+
+                    if ($http['response']['code'] != 200) {
+                        $err = _x('校验失败，请稍后再试（错误代码001）', 'ajax返回提示', WB_SPA_DM) . '[' . $http['response']['code'] . ']';
+                        break;
+                    }
+
+                    $body = $http['body'];
+
+                    if (empty($body)) {
+                        $err = _x('发生异常错误，联系技术支持（错误代码 010）', 'ajax返回提示', WB_SPA_DM);
+                        break;
+                    }
+
+                    $data = json_decode($body, true);
+
+                    if (empty($data)) {
+                        $err = _x('发生异常错误，联系技术支持（错误代码011）', 'ajax返回提示', WB_SPA_DM);
+                        break;
+                    }
+                    if (empty($data['data'])) {
+                        $err = _x('校验失败，请稍后再试（错误代码004)', 'ajax返回提示', WB_SPA_DM);
+                        break;
+                    }
+                    if ($data['code']) {
+                        $err_code = $data['data'];
+                        switch ($err_code) {
+                            case 100:
+                            case 101:
+                            case 102:
+                            case 103:
+                                $err = _x('插件配置参数错误，联系技术支持，错误代码：', 'ajax返回提示', WB_SPA_DM) .  $err_code;
+                                break;
+                            case 200:
+                                $err = _x('输入key无效，请输入正确key（错误代码200）', 'ajax返回提示', WB_SPA_DM);
+                                break;
+                            case 201:
+                                $err = _x('key使用次数超出限制范围（错误代码201）', 'ajax返回提示', WB_SPA_DM);
+                                break;
+                            case 202:
+                            case 203:
+                            case 204:
+                                $err = _x('校验服务器异常，联系技术支持，错误代码：', 'ajax返回提示', WB_SPA_DM) .  $err_code;
+                                break;
+                            default:
+                                $err = _x('发生异常错误，联系技术支持，错误代码：', 'ajax返回提示', WB_SPA_DM) .  $err_code;
+                        }
+
+                        break;
+                    }
+
+                    update_option('wb_spider_analyser_ver', $data['v'], false);
+                    update_option('wb_spider_analyser_cnf_' . $data['v'], $data['data'], false);
+
+
+                    $ret['code'] = 0;
+                    $ret['desc'] = 'success';
+                } while (false);
+                if ($err) {
+                    $ret['desc'] = $err;
+                }
+                self::ajax_resp($ret);
+                break;
+
+            case 'reset':
+                $ver = get_option('wb_spider_analyser_ver', 0);
+                if (!$ver) {
+                    self::ajax_resp(array('code' => 1, 'data' => 'not verify'));
+                    exit(0);
+                }
+                delete_option('wb_spider_analyser_ver');
+                delete_option('wb_spider_analyser_cnf_' . $ver);
+
+                $ret = ['code' => 0, 'desc' => 'success'];
+                self::ajax_resp($ret);
+                exit(0);
+                break;
+
+            case 'options':
+                $ver = get_option('wb_spider_analyser_ver', 0);
+                $cnf = '';
+                if ($ver) {
+                    $cnf = get_option('wb_spider_analyser_cnf_' . $ver, '');
+                }
+                self::ajax_resp(['o' => $cnf]);
+                break;
+
+            case 'get_localize':
+                $ret = [
+                    'code' => 0,
+                    'desc' => 'success'
+                ];
+
+                $ret['data'] = self::localize_ajax_handle();
+
+                self::ajax_resp($ret);
+                break;
+
+            case 'get_comparison':
+                $ret = [
+                    'code' => 0,
+                    'desc' => 'success',
+                    'data' => WBP::wb_get_json_fields('comparison.json', __DIR__ . '/json/')
+                ];
+
+                self::ajax_resp($ret);
+                break;
+        }
+    }
+
+    public static function spider_analyser_ajax()
+    {
+        // global $wpdb;
+
+        $op = sanitize_text_field(self::param('op'));
+        if (!$op) {
+            $op = sanitize_text_field(self::param('op', '', 'g'));
+        }
+
+        if (!$op) {
+            return;
+        }
+        $arrow = [
+            'chk_ver',
+            'promote',
+            'chart_data',
+            'top_url',
+            'top_post',
+            'top_spider',
+            'summary',
+            'code',
+            'log',
+            'log_cnf',
+            'stop_cnf',
+            'path_cnf',
+            'path',
+            'ip',
+            'post',
+            'get_setting',
+            'down_log',
+            'spider_history'
+        ];
+        if (!in_array($op, $arrow)) {
+            return;
+        }
+        if (!current_user_can('manage_options')) {
+            self::ajax_resp(['code' => 1, 'desc' => 'deny']);
+            return;
+        }
+
+        switch ($op) {
+            case 'chk_ver':
+                $http = wp_remote_get('https://www.wbolt.com/wb-api/v1/themes/checkver?code=spider-analyser&ver=' . WP_SPIDER_ANALYSER_VERSION . '&chk=1', array('sslverify' => false, 'headers' => array('referer' => home_url()),));
+
+                if (wp_remote_retrieve_response_code($http) == 200) {
+                    echo esc_html(wp_remote_retrieve_body($http));
+                }
+
+                exit();
+                break;
+            case 'promote':
+
+                $ret = ['code' => 0, 'desc' => 'success', 'data' => ''];
+                $data = [];
+                $expired = 0;
+                $update_cache = false;
+                do {
+                    $option = get_option('wb_spider_analyser_promote', null);
+                    do {
+                        if (!$option || !is_array($option)) {
+                            break;
+                        }
+
+                        if (!isset($option['expired']) || empty($option['expired'])) {
+                            break;
+                        }
+
+                        $expired = intval($option['expired']);
+                        if ($expired < current_time('U')) {
+                            $expired = 0;
+                            break;
+                        }
+
+                        if (!isset($option['data']) || empty($option['data'])) {
+                            break;
+                        }
+
+                        $data = $option['data'];
+                    } while (0);
+
+                    if ($data) {
+                        $ret['data'] = $data;
+                        break;
+                    }
+                    if ($expired) {
+                        break;
+                    }
+
+                    $update_cache = true;
+                    $param = ['c' => 'spider-analyser', 'h' => $_SERVER['HTTP_HOST']];
+                    $http = wp_remote_post('https://www.wbolt.com/wb-api/v1/promote', array('sslverify' => false, 'body' => $param, 'headers' => array('referer' => home_url()),));
+
+                    if (is_wp_error($http)) {
+                        $ret['error'] = $http->get_error_message();
+                        break;
+                    }
+                    if (wp_remote_retrieve_response_code($http) !== 200) {
+                        $ret['error-code'] = '201';
+                        break;
+                    }
+                    $body = trim(wp_remote_retrieve_body($http));
+                    if (!$body) {
+                        $ret['empty'] = 1;
+                        break;
+                    }
+                    $data = json_decode($body, true);
+                    if (!$data) {
+                        $ret['json-error'] = 1;
+                        $ret['body'] = $body;
+                        break;
+                    }
+                    //data = [title=>'',image=>'','expired'=>'2021-05-12','url=>'']
+                    $ret['data'] = $data;
+                    if (isset($data['expired']) && $data['expired'] && preg_match('#^\d{4}-\d{2}-\d{2}$#', $data['expired'])) {
+                        $expired = strtotime($data['expired'] . ' 23:50:00');
+                    }
+                } while (0);
+                if ($update_cache) {
+                    if (!$expired) {
+                        $expired = current_time('U') + 21600;
+                    }
+                    update_option('wb_spider_analyser_promote', ['data' => $ret['data'], 'expired' => $expired], false);
+                }
+                self::ajax_resp($ret);
+                break;
+            case 'chart_data':
+                // $ret = array('code' => 0, 'desc' => 'success');
+                $spider = sanitize_text_field(self::param('spider'));
+                $day = absint(self::param('day', 0));
+                $type = absint(self::param('type', 1));
+
+                $cache_param = ['op' => 'chart_data', 'day' => $day, 'type' => $type, 'spider' => $spider];
+                $cache_file = self::cache($cache_param);
+                if ($cache_file) {
+                    include $cache_file;
+                }
+
+                $data = self::chart_data($day, $type, 0, $spider);
+                //$compare_day = $day>0?$day * 2 : 1;
+                /*$compare = [];
+                if ($type != 3) {
+
+                }*/
+                $compare = self::chart_data($day, $type, 1, $spider);
+
+                $ret = array(
+                    //'sql'=>$sql,
+                    'code' => 0,
+                    'data' => $data,
+                    'compare' => $compare,
+                );
+
+                self::cache($cache_param, $ret, 3600); //60*60
+
+                self::ajax_resp($ret);
+                break;
+            case 'code':
+
+                $spider = sanitize_text_field(self::param('spider'));
+                $day = absint(self::param('day', 0));
+                $cache_param = ['op' => 'code', 'day' => $day, 'spider' => $spider];
+                $cache_file = self::cache($cache_param);
+                if ($cache_file) {
+                    include $cache_file;
+                }
+
+                $db = self::db();
+                $time = strtotime(current_time('mysql'));
+                if ($day) {
+                    $time = $time - 86400 * $day;
+                }
+
+                $ymd = gmdate('Y-m-d', $time);
+                $t = $db->prefix . 'wb_spider_log';
+
+                if ($day > 2) {
+                    $op = '>=';
+                } else {
+                    $op = '=';
+                }
+                $where_more = '';
+                if ($spider) {
+                    $where_more = $db->prepare(" AND spider = %s", $spider);
+                }
+                $sql = "SELECT COUNT(1) num,code FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd' $where_more GROUP BY code ORDER BY num DESC LIMIT 10";
+
+                $list = $db->get_results($sql);
+
+                $ret = array(
+                    'code' => 0,
+                    'data' => $list,
+                );
+
+                self::cache($cache_param, $ret, 3600); //60*60
+
+                self::ajax_resp($ret);
+                break;
+            case 'top_url':
+
+                $day = absint(self::param('day', 0));
+                $cache_param = ['op' => 'top_url', 'day' => $day];
+                $cache_file = self::cache($cache_param);
+                if ($cache_file) {
+                    include $cache_file;
+                }
+
+                $db = self::db();
+                $time = strtotime(current_time('mysql'));
+                if ($day) {
+                    $time = $time - 86400 * $day;
+                }
+                $ymd = gmdate('Y-m-d', $time);
+                $t = $db->prefix . 'wb_spider_log';
+                $op = '=';
+                if ($day > 1) {
+                    $op = '>=';
+                }
+
+                $total = $db->get_var("SELECT COUNT(1) total FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd'");
+
+                $sql = "SELECT COUNT(1) num,url FROM (SELECT * FROM  $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd') AS a GROUP BY url_md5 ORDER BY num DESC LIMIT 10";
+
+                $list = $db->get_results($sql);
+                $data = [];
+
+                foreach ($list as $r) {
+                    $r->rate = round($r->num / $total * 100, 2);
+                    $data[] = $r;
+                }
+
+                $ret = array(
+                    //'sql'=>$sql,
+                    'code' => 0,
+                    'data' => $data,
+                );
+
+                self::cache($cache_param, $ret, 3600);
+
+                self::ajax_resp($ret);
+                break;
+
+
+            case 'top_spider':
+
+                $day = absint(self::param('day', 0));
+                $cache_param = ['op' => 'top_spider', 'day' => $day];
+                $cache_file = self::cache($cache_param);
+                if ($cache_file) {
+                    include $cache_file;
+                }
+
+                $db = self::db();
+                $time = strtotime(current_time('mysql'));
+                if ($day) {
+                    $time = $time - 86400 * $day;
+                }
+                $ymd = gmdate('Y-m-d', $time);
+                $t2 = $db->prefix . 'wb_spider';
+                $t = $db->prefix . 'wb_spider_log';
+                $op = '=';
+                if ($day > 1) {
+                    $op = '>=';
+                }
+                $total = $db->get_var("SELECT COUNT(1) total FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd'");
+
+                //LEFT JOIN $t2 b ON a.spider=b.name
+                $sql = "SELECT COUNT(1) num,a.spider,1 AS udg FROM (SELECT  * FROM $t  WHERE DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd') AS a GROUP BY a.spider ORDER BY num DESC LIMIT 10";
+
+                $list = $db->get_results($sql);
+                $data = [];
+
+                foreach ($list as $r) {
+                    $r->rate = round($r->num / $total * 100, 2);
+                    $data[] = $r;
+                }
+
+                $ret = array(
+                    //'sql'=>$sql,
+                    'code' => 0,
+                    'data' => $data,
+                );
+                self::cache($cache_param, $ret, 3600);
+
+                self::ajax_resp($ret);
+                break;
+
+            case 'summary':
+
+                $cache_param = ['op' => 'summary'];
+                $cache_file = self::cache($cache_param);
+                if ($cache_file) {
+                    include $cache_file;
+                }
+
+                $db = self::db();
+                $ymd = current_time('Y-m-d');
+                $t = $db->prefix . 'wb_spider_log';
+                //蜘蛛数
+                $data = [
+                    '0' => ['spider' => 0, 'url' => 0, 'avg_url' => 0],
+                    '1' => ['spider' => 0, 'url' => 0, 'avg_url' => 0],
+                    '7' => ['spider' => 0, 'url' => 0, 'avg_url' => 0],
+                    '30' => ['spider' => 0, 'url' => 0, 'avg_url' => 0]
+                ];
+
+
+                $row = $db->get_row("SELECT COUNT(1) url,COUNT(DISTINCT spider) spider FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d')='$ymd' ");
+
+                if ($row) {
+                    $data['0']['spider'] = $row->spider;
+                    $data['0']['url'] = $row->url;
+                    $data['0']['avg_url'] = $row->spider > 0 ? ceil($row->url / $row->spider) : 0;
+                }
+
+                foreach ($data as $k => $r) {
+                    if (!$k) continue;
+                    $day = intval($k);
+                    $ymd = gmdate('Y-m-d', strtotime(current_time('mysql')) - 86400 * $day);
+                    $op = '=';
+                    if ($day > 1) {
+                        $op = '>=';
+                    }
+                    $row = $db->get_row("SELECT COUNT(1) url,COUNT(DISTINCT spider) spider FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd' ");
+
+                    if ($row) {
+                        $data[$k]['spider'] = $row->spider;
+                        $data[$k]['url'] = $row->url;
+                        $data[$k]['avg_url'] = $row->spider > 0 ? ceil($row->url / $row->spider) : 0;
+                    }
+                }
+                /*
+
+
+
+
+                $ymd = gmdate('Y-m-d', strtotime(current_time('mysql')) - 86400 * 7);
+                $row = $db->get_row("SELECT COUNT(1) url FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d')>='$ymd' ");
+                if ($row) {
+                    $data['7']['url'] = ceil($row->url / 7);
+                }
+                $row2 = $db->get_row("SELECT SUM(num) spider FROM (SELECT COUNT(DISTINCT  spider) num,DATE_FORMAT(visit_date,'%Y-%m-%d') ymd FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d')>='$ymd' GROUP BY ymd) as tmp ");
+                if ($row2) {
+                    $data['7']['spider'] = ceil($row2->spider / 7);
+                }
+
+
+
+                $ymd = gmdate('Y-m-d', strtotime(current_time('mysql')) - 86400 * 30);
+                $row = $db->get_row("SELECT COUNT(1) url FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d')>='$ymd' ");
+                if ($row) {
+                    $data['30']['url'] = ceil($row->url / 30);
+                }
+                $row3 = $db->get_row("SELECT SUM(num) spider FROM (SELECT COUNT(DISTINCT  spider) num,DATE_FORMAT(visit_date,'%Y-%m-%d') ymd FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d')>='$ymd' GROUP BY ymd) as tmp ");
+                if ($row3) {
+                    $data['30']['spider'] = ceil($row3->spider / 30);
+                }*/
+                //$data['7']['avg_url'] = $data[2]['spider'] > 0 ? ceil($data[2]['url'] / $data[2]['spider']) : 0;
+                //$data['30']['avg_url'] = $data[2]['spider'] > 0 ? ceil($data[2]['url'] / $data[2]['spider']) : 0;
+
+
+                $ret = array(
+                    //'sql'=>$sql,
+                    'code' => 0,
+                    'data' => $data,
+                );
+
+                self::cache($cache_param, $ret, 3600);
+
+                self::ajax_resp($ret);
+
+                break;
+
+            case 'log':
+                $db = self::db();
+                $q = self::array_sanitize_text_field(self::param('q', []));
+                $day = isset($q['day']) ? intval($q['day']) : -1;
+                $t = $db->prefix . 'wb_spider_log';
+                $t2 = $db->prefix . 'wb_spider';
+                $where = array();
+                if ($day > -1) {
+                    $time = strtotime(current_time('mysql'));
+                    if ($day) {
+                        $time = $time - 86400 * $day;
+                    }
+                    $ymd = gmdate('Y-m-d', $time);
+
+                    $op = '=';
+                    if ($day > 1) {
+                        $op = '>=';
+                    }
+
+                    $where[] = "DATE_FORMAT(a.visit_date,'%Y-%m-%d') $op '$ymd'";
+                }
+
+                if (!empty($q['spider'])) {
+                    $where[] = $db->prepare("a.spider=%s", $q['spider']);
+                }
+                if (!empty($q['code'])) {
+                    if ($q['code'] == '301/302') {
+                        $where[] = "(a.code='301' OR a.code='302')";
+                    } else {
+                        $where[] = $db->prepare("a.code=%s", $q['code']);
+                    }
+                }
+                if (!empty($q['url'])) {
+                    $where[] = $db->prepare("a.url REGEXP %s", preg_quote($q['url']));
+                }
+                if (!empty($q['ip'])) {
+                    $where[] = $db->prepare("a.visit_ip REGEXP %s", preg_quote($q['ip']));
+                }
+                $num = absint(self::param('num', 50));
+                if (!$num) {
+                    $num = 50;
+                }
+                $page = absint(self::param('page', 1));
+                if (!$page) {
+                    $page = 1;
+                }
+
+                $offset = max(0, ($page - 1) * $num);
+
+                if ($where) {
+                    $where = implode(' AND ', $where);
+                } else {
+                    $where = '1=1';
+                }
+
+                $cache_param = ['log', $where, $offset, $num];
+                $cache_file = self::cache($cache_param);
+                if ($cache_file) {
+                    include $cache_file;
+                }
+
+                $sql = "SELECT SQL_CALC_FOUND_ROWS a.*,b.status AS udg FROM $t a left join $t2 b on a.spider=b.name WHERE $where ORDER BY a.id DESC LIMIT $offset,$num";
+                $list = $db->get_results($sql);
+
+                $total = $db->get_var("SELECT FOUND_ROWS()");
+                $ret = array(
+                    //'sql'=>$sql,
+                    'num' => $num,
+                    'total' => $total,
+                    'code' => 0,
+                    'data' => $list,
+                );
+                self::cache($cache_param, $ret, 3600);
+
+                self::ajax_resp($ret);
+                break;
+
+            case 'log_cnf':
+                $cache_param = ['log_cnf'];
+                $cache_file = self::cache($cache_param);
+                if ($cache_file) {
+                    include $cache_file;
+                }
+
+                $ret['data'] = self::spider_log();
+                self::cache($cache_param, $ret, 3600);
+
+                self::ajax_resp($ret);
+                break;
+
+            case 'stop_cnf':
+                $cache_param = ['stop_cnf'];
+                $cache_file = self::cache($cache_param);
+                if ($cache_file) {
+                    include $cache_file;
+                }
+
+                $ret['data'] = self::spider_list_stop();
+                self::cache($cache_param, $ret, 3600);
+
+                self::ajax_resp($ret);
+                break;
+
+            case 'path_cnf':
+                $cache_param = ['path_cnf'];
+                $cache_file = self::cache($cache_param);
+                if ($cache_file) {
+                    include $cache_file;
+                }
+                $ret['data'] = self::spider_path();
+                self::cache($cache_param, $ret, 3600);
+
+                self::ajax_resp($ret);
+
+                break;
+
+            case 'path':
+                $ret = array('code' => 0, 'desc' => 'success', 'data' => []);
+                do {
+
+                    $db = self::db();
+                    $q = self::array_sanitize_text_field(self::param('q', []));
+                    $day = isset($q['day']) ? intval($q['day']) : -1;
+                    $t = $db->prefix . 'wb_spider_log';
+                    $where = array();
+                    if ($day > -1) {
+                        $time = strtotime(current_time('mysql'));
+                        if ($day) {
+                            $time = $time - 86400 * $day;
+                        }
+                        $ymd = gmdate('Y-m-d', $time);
+
+                        $op = '=';
+                        if ($day > 1) {
+                            $op = '>=';
+                        }
+
+                        $where[] = "DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd'";
+                    }
+                    $is_chart = sanitize_text_field(self::param('chart'));
+                    if ($is_chart) {
+                        if ($where) {
+                            $where = implode(' AND ', $where);
+                        } else {
+                            $where = '1=1';
+                        }
+                        $cache_param = ['path', $is_chart, $where];
+                        $cache_file = self::cache($cache_param);
+                        if ($cache_file) {
+                            include $cache_file;
+                        }
+
+
+                        $sql = "SELECT url_type,COUNT(1) num FROM (SELECT * FROM $t WHERE $where) AS a GROUP  BY url_type ";
+                        $list = $db->get_results($sql);
+
+
+                        $url_types = WP_Spider_Analyser_Admin::url_types();
+                        $cnf = self::cnf();
+                        if ($cnf['user_rule']) foreach ($cnf['user_rule'] as $r) {
+                            $url_types[$r['name']] = $r['name'];
+                        }
+                        $data = [];
+                        foreach ($url_types as $k => $v) {
+                            $data[$k] = ['value' => 0, 'name' => $v];
+                        }
+                        foreach ($list as $r) {
+                            $data[$r->url_type]['value'] = $r->num;
+                        }
+
+
+                        $ret['data'] = array_values($data);
+                        self::cache($cache_param, $ret, 3600);
+                        break;
+                    }
+
+
+
+                    if (!empty($q['spider'])) {
+                        $where[] = $db->prepare("spider=%s", $q['spider']);
+                    }
+                    if (!empty($q['code'])) {
+                        $where[] = $db->prepare("code=%s", $q['code']);
+                    }
+                    if (!empty($q['url'])) {
+                        $where[] = $db->prepare("url REGEXP %s", preg_quote($q['url']));
+                    }
+                    if (!empty($q['ip'])) {
+                        $where[] = $db->prepare("visit_ip REGEXP %s", preg_quote($q['ip']));
+                    }
+                    if (!empty($q['type'])) {
+                        $where[] = $db->prepare("url_type=%s", $q['type']);
+                    }
+                    $num = absint(self::param('num', 50));
+                    if (!$num) {
+                        $num = 50;
+                    }
+                    $page = absint(self::param('page', 1));
+                    if (!$page) {
+                        $page = 1;
+                    }
+
+
+                    $offset = max(0, ($page - 1) * $num);
+
+                    if ($where) {
+                        $where = implode(' AND ', $where);
+                    } else {
+                        $where = '1=1';
+                    }
+
+                    $order_by = 'num';
+                    $sort = sanitize_text_field(self::param('sort'));
+                    if (in_array($sort, ['num', 'url_type', 'url'])) {
+                        $order_by = $sort;
+                    }
+                    $sort_by = sanitize_text_field(self::param('order'));
+                    $order_by .=  $sort_by == 'asc' ? ' ASC' : ' DESC';
+
+
+                    $cache_param = ['path', $where, $order_by, $offset, $num];
+                    $cache_file = self::cache($cache_param);
+                    if ($cache_file) {
+                        include $cache_file;
+                    }
+
+                    $sum = $db->get_var("SELECT COUNT(1) num FROM $t WHERE $where");
+
+                    $sql = "SELECT SQL_CALC_FOUND_ROWS COUNT(1) num,url,url_type,'' type,ROUND(COUNT(1)/$sum * 100,2) percent 
+                                FROM (SELECT * FROM $t WHERE $where ) AS a GROUP BY url_md5 ORDER BY $order_by LIMIT $offset,$num";
+
+                    $list = $db->get_results($sql);
+
+                    $total = $db->get_var("SELECT FOUND_ROWS()");
+                    $ret = array(
+                        //'sql'=>$sql,
+                        'num' => $num,
+                        'total' => $total,
+                        'code' => 0,
+                        'data' => $list,
+                    );
+                    self::cache($cache_param, $ret, 3600);
+                } while (0);
+
+
+                self::ajax_resp($ret);
+                break;
+
+            case 'ip':
+                $ret = array('code' => 0, 'desc' => 'success', 'data' => [], 'total' => 0);
+                do {
+                    if (!get_option('wb_spider_analyser_ver', 0)) {
+                        break;
+                    }
+                    $db = self::db();
+                    $q = self::array_sanitize_text_field(self::param('q', []));
+                    $day = isset($q['day']) ? intval($q['day']) : -1;
+                    $t2 = $db->prefix . 'wb_spider';
+                    $t = $db->prefix . 'wb_spider_log';
+                    $where = array();
+                    if ($day > -1) {
+                        $time = strtotime(current_time('mysql'));
+                        if ($day) {
+                            $time = $time - 86400 * $day;
+                        }
+                        $ymd = gmdate('Y-m-d', $time);
+
+                        $op = '=';
+                        if ($day > 1) {
+                            $op = '>=';
+                        }
+
+                        $where[] = "DATE_FORMAT(a.visit_date,'%Y-%m-%d') $op '$ymd'";
+                    }
+
+                    if (!empty($q['spider'])) {
+                        $where[] = $db->prepare("a.spider=%s", $q['spider']);
+                    }
+                    if (!empty($q['name'])) {
+                        $where[] = $db->prepare("a.spider REGEXP %s", preg_quote($q['name']));
+                    }
+
+                    $num = absint(self::param('num', 50));
+                    if (!$num) {
+                        $num = 50;
+                    }
+                    $page = absint(self::param('page', 1));
+                    if (!$page) {
+                        $page = 1;
+                    }
+
+                    $offset = max(0, ($page - 1) * $num);
+
+                    if ($where) {
+                        $where = implode(' AND ', $where);
+                    } else {
+                        $where = '1=1';
+                    }
+
+                    $order_by = 'num';
+                    $sort = sanitize_text_field(self::param('sort'));
+                    if (in_array($sort, ['num'])) {
+                        $order_by = $sort;
+                    } else if (in_array($sort, ['ip_range', 'spider'])) {
+                        $order_by = 'a.' . $sort;
+                    }
+                    $sort_by = sanitize_text_field(self::param('order'));
+                    $order_by .=  $sort_by == 'asc' ? ' ASC' : ' DESC';
+
+                    $cache_param = ['ip', $where, $order_by, $offset, $num];
+                    $cache_file = self::cache($cache_param);
+                    if ($cache_file) {
+                        include $cache_file;
+                    }
+                    $sum = $db->get_var("SELECT COUNT(1) num FROM $t a WHERE $where");
+
+                    $sql = "SELECT SQL_CALC_FOUND_ROWS COUNT(1) num,a.spider,SUBSTRING_INDEX(a.visit_ip,'.',3) ip_range,ROUND(COUNT(1)/$sum * 100,2) percent,b.status AS udg 
+                            FROM (SELECT * FROM $t a WHERE $where) AS a LEFT JOIN $t2 b ON a.spider=b.name 
+                            GROUP BY a.spider,ip_range ORDER BY $order_by LIMIT $offset,$num";
+
+                    //echo $sql;exit();
+                    $list = $db->get_results($sql);
+
+                    $total = $db->get_var("SELECT FOUND_ROWS()");
+                    $ret = array(
+                        //'sql'=>$sql,
+                        'num' => $num,
+                        'total' => $total,
+                        'code' => 0,
+                        'data' => $list,
+                    );
+                    self::cache($cache_param, $ret, 3600);
+                } while (0);
+
+                self::ajax_resp($ret);
+                break;
+
+            case 'post':
+                $ret = array('code' => 0, 'desc' => 'success', 'data' => [], 'total' => 0);
+                do {
+                    if (!get_option('wb_spider_analyser_ver', 0)) {
+                        break;
+                    }
+                    $dsb = self::param('dsb') ? 1 : 0;
+                    $q = self::array_sanitize_text_field(self::param('q', []));
+                    $day = isset($q['day']) ? intval($q['day']) : -1;
+
+                    //if($dsb){
+
+                    //}
+                    $db = self::db();
+
+                    $t = $db->prefix . 'wb_spider_log';
+                    $t2 = $db->prefix . 'wb_spider_post';
+                    $where = array();
+                    $where2 = array();
+                    $where[] = "url_type='post'";
+                    if ($day > -1) {
+                        $time = strtotime(current_time('mysql'));
+                        if ($day) {
+                            $time = $time - 86400 * $day;
+                        }
+                        $ymd = gmdate('Y-m-d', $time);
+
+                        $op = '=';
+                        if ($day > 1) {
+                            $op = '>=';
+                        }
+
+                        $where[] = "DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd'";
+                    }
+
+                    if (!empty($q['spider'])) {
+                        $where[] = $db->prepare("spider=%s", $q['spider']);
+                    }
+                    if (!empty($q['name'])) {
+                        $kw = str_replace(home_url('/'), '/', $q['name']);
+                        //$where[] = $db->prepare("CONCAT_WS('',a.url,c.post_title) REGEXP %s",preg_quote($kw));
+                        $where[] = $db->prepare("url LIKE %s", "%$kw%");
+                        $where2[] = $db->prepare("c.post_title LIKE %s", "%$kw%");;
+                    }
+
+                    if (!empty($q['type'])) {
+                        $type = $q['type'];
+                        if ($q['type'] == 3) {
+                            $type = 0;
+                        }
+                        $where2[] = $db->prepare("b.status=%s", $type);
+                    }
+
+                    $num = absint(self::param('num', 50));
+                    if (!$num) {
+                        $num = 50;
+                    }
+                    $page = absint(self::param('page', 1));
+                    if (!$page) {
+                        $page = 1;
+                    }
+
+                    $offset = max(0, ($page - 1) * $num);
+
+                    if ($where) {
+                        $where = implode(' AND ', $where);
+                    } else {
+                        $where = '1=1';
+                    }
+                    if ($where2) {
+                        $where2 = ' AND ' . implode(' AND ', $where2);
+                    } else {
+                        $where2 = '';
+                    }
+
+                    $order_by = 'num';
+                    $sort = self::param('sort');
+                    if (in_array($sort, ['num', 'url_in', 'url_out', 'post_date'])) {
+                        $order_by = $sort;
+                    }
+                    $sort_by = sanitize_text_field(self::param('order'));
+                    $order_by .=  $sort_by == 'asc' ? ' ASC' : ' DESC';
+
+
+                    $cache_param = ['post', $where, $where2, $order_by, $offset, $num];
+                    $cache_file = self::cache($cache_param);
+                    if ($cache_file) {
+                        include $cache_file;
+                    }
+
+                    $sql = "SELECT SQL_CALC_FOUND_ROWS COUNT(1) num,a.url_md5,a.url,b.url_in,b.url_out,b.status,b.post_id,c.post_title,c.post_date 
+                                FROM (SELECT * FROM $t WHERE $where ) AS a,$t2 b,$db->posts c 
+                                WHERE a.url_md5=b.url_md5 AND b.post_id=c.ID $where2 ";
+                    $sql .= " GROUP BY a.url_md5 ORDER BY $order_by LIMIT $offset,$num";
+
+                    $list = $db->get_results($sql);
+                    $total = $db->get_var("SELECT FOUND_ROWS()");
+                    foreach ($list as $k => $r) {
+                        $list[$k]->post_url = get_permalink($r->post_id);
+                        $list[$k]->post_edit_url = get_edit_post_link($r->post_id, 'url');
+                    }
+
+
+                    $ret = array(
+                        //'sql'=>$sql,
+                        'num' => $num,
+                        'total' => $total,
+                        'code' => 0,
+                        'data' => $list,
+                    );
+
+                    //if($dsb){
+                    self::cache($cache_param, $ret, 3600);
+                    //}
+                } while (0);
+
+                self::ajax_resp($ret);
+                break;
+
+
+            case 'get_setting':
+
+                $ret = array('code' => 0, 'desc' => 'success', 'data' => []);
+                $ret['data'] = WP_Spider_Analyser_Admin::wp_spider_analyser_conf();
+
+                self::ajax_resp($ret);
+                break;
+
+            case 'down_log':
+
+                $db = self::db();
+                set_time_limit(0);
+                ini_set('memory_limit', '500M');
+                $filename = 'spider-log.txt';
+                header('Content-Type: application/application/octet-stream	');
+                header('Content-Disposition: attachment;filename="' . $filename . '"');
+                header('Cache-Control: max-age=0');
+                header('Cache-Control: max-age=1');
+                header('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // Date in the past
+                header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT'); // always modified
+                header('Cache-Control: cache, must-revalidate'); // HTTP/1.1
+                header('Pragma: public'); // HTTP/1.0
+                $fileHandle = fopen('php://output', 'wb+');
+                $page = -1;
+                $num = 1000;
+                $t = $db->prefix . 'wb_spider_log';
+                do {
+                    $page++;
+                    $offset = $num * $page;
+                    $list = $db->get_results("SELECT * FROM $t WHERE 1 LIMIT $offset,$num");
+                    if (!$list) {
+                        break;
+                    }
+                    foreach ($list as $r) {
+                        fwrite($fileHandle, wp_json_encode($r) . "\n");
+                    }
+                } while (1);
+
+                fclose($fileHandle);
+                exit();
                 break;
             case 'spider_history':
-                $ret = ['code' => 0, 'desc' => esc_html__('Success', WB_SPA_DM)];
+                $ret = array('code' => 0, 'desc' => 'success');
+                $post_id = absint(self::param('post_id', 0));
+                $day = intval(self::param('day', -1));
+                $list = array();
                 do {
-                    $day = (int) static::param('day', 7);
-                    $spider_name = sanitize_text_field(static::param('name'));
-                    if (!$spider_name) { $ret = ['code' => 1, 'desc' => esc_html__('Spider name is required.', WB_SPA_DM)]; break; }
+                    if (!$post_id) {
+                        break;
+                    }
+                    $url = get_permalink($post_id);
+                    $url = str_replace(home_url(), '', $url);
+                    $url_md5 = md5($url);
+                    $limit = '';
+                    $cache_param = ['spider_history', $url_md5, $limit, $day];
+                    $cache_file = self::cache($cache_param);
+                    if ($cache_file) {
+                        include $cache_file;
+                    }
+                    $db = self::db();
 
-                    list($xdata, $ydata) = static::chart_data($day, 2, 0, $spider_name);
-                    $ret['data'] = ['x' => $xdata ?: [], 'y' => $ydata ?: []];
+                    $sql = "SELECT `spider`, `visit_date`, `visit_ip` FROM `{$db->prefix}wb_spider_log` WHERE `url_md5`=%s ";
+                    $sql = $db->prepare($sql, $url_md5);
+
+                    if ($day > -1) {
+                        $time = strtotime(current_time('mysql'));
+                        if ($day) {
+                            $time = $time - 86400 * $day;
+                        }
+                        $ymd = gmdate('Y-m-d', $time);
+
+                        $op = '=';
+                        if ($day > 1) {
+                            $op = '>=';
+                        }
+
+                        $sql .= " AND DATE_FORMAT(visit_date,'%Y-%m-%d') $op '$ymd'";
+                    }
+
+
+                    $ret['data'] = $db->get_results($sql . " ORDER BY visit_date DESC $limit");
+                    self::cache($cache_param, $ret, 3600);
                 } while (0);
-                static::ajax_resp($ret);
+
+
+                self::ajax_resp($ret);
+
                 break;
         }
-        wp_die();
     }
 
-    /**
-     * Send spider data to an external API. Non-blocking.
-     *
-     * @param array $spider_data Data about the spider to send.
-     */
-    public static function update_spider( $spider_data ) {
-        $api_url = 'https://www.wbolt.com/wb-api/v1/spider/info';
-        $http_args = array(
-            'timeout'   => 1,
-            'blocking'  => false,
-            'sslverify' => true,
-            'body'      => array( 'spider' => wp_json_encode( $spider_data ) ),
-            'headers'   => array( 'referer' => home_url() ),
-        );
-        wp_remote_post( $api_url, $http_args );
+    public static function delete_log($param)
+    {
+        // global $wpdb;
+
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider_log';
+        $where = [];
+        if (isset($param['spider']) && $param['spider']) {
+            $where[] = $db->prepare("spider=%s", $param['spider']);
+        }
+        if (isset($param['ip']) && $param['ip']) {
+
+            if (strpos($param['ip'], '*') > 0) {
+                $where[] = $db->prepare("visit_ip LIKE  %s", str_replace('*', '%', $param['ip']));
+            } else {
+                $where[] = $db->prepare("visit_ip = %s", $param['ip']);
+            }
+            $t_ip = $db->prefix . 'wb_spider_ip';
+            $db->query("DELETE FROM $t_ip WHERE status=2 AND " . $db->prepare("ip=%s", $param['ip']));
+        }
+        if ($where) {
+            $db->query("DELETE FROM $t WHERE " . implode(' AND ', $where));
+        }
+        self::clear_cache();
     }
 
-    /**
-     * Synchronize spider information from an external API.
-     * Typically run via cron.
-     */
-    public static function sync_wb_spider() {
-        $db = static::db();
-        $table_spider = $db->prefix . 'wb_spider';
-        $existing_spiders = $db->get_col( "SELECT `name` FROM `{$table_spider}`" );
+    public static function txt_log($msg, $mod = null)
+    {
 
-        if ( empty( $existing_spiders ) ) return;
-
-        $api_url = 'https://www.wbolt.com/wb-api/v1/spider/info';
-        $api_params = array(
-            'timeout'   => 30, 'sslverify' => true,
-            'headers'   => array( 'referer' => home_url() ),
-            'body'      => array( 'udg' => 1, 'logo' => 1, 'locale' => get_locale()),
-        );
-        $response = wp_remote_get( $api_url, $api_params );
-
-        if ( is_wp_error( $response ) ) { error_log('Spider Analyser Sync API Error: ' . $response->get_error_message()); return; }
-        if ( 200 !== wp_remote_retrieve_response_code( $response ) ) { error_log('Spider Analyser Sync API Non-200 Response: ' . wp_remote_retrieve_response_code( $response )); return; }
-
-        $body = wp_remote_retrieve_body( $response );
-        if ( ! $body ) { error_log('Spider Analyser Sync API Error: Empty response body.'); return; }
-
-        $api_data = json_decode( $body, true );
-        if ( ! $api_data || ! is_array( $api_data ) || empty( $api_data['data'] ) || ! is_array( $api_data['data'] ) ) {
-            error_log('Spider Analyser Sync API Error: Invalid data structure.'); return;
+        if (!self::$debug) {
+            return;
         }
 
-        static::save_spider_info( $api_data['data'] );
 
-        $db->query( "UPDATE `{$table_spider}` SET `status` = 1 WHERE `status` = 2" );
+        if (is_array($msg) || is_object($msg)) {
+            $msg = wp_json_encode($msg);
+        }
 
-        foreach ( $api_data['data'] as $spider_info_from_api ) {
-            if ( ! isset( $spider_info_from_api['name'], $spider_info_from_api['bot_type'], $spider_info_from_api['bot_url'] ) ) continue;
+        if ($mod) {
+            $msg = '[' . $mod . '] ' . $msg;
+        }
+        error_log('[' . current_time('mysql') . '] ' . $msg . "\n", 3, WP_SPIDER_ANALYSER_PATH . '/#log/running.log');
+    }
 
-            $s_name = sanitize_text_field($spider_info_from_api['name']);
-            $s_bot_type = sanitize_text_field($spider_info_from_api['bot_type']);
-            $s_bot_url = esc_url_raw($spider_info_from_api['bot_url']);
+    public static function plugin_activate()
+    {
+        if (!is_dir(WP_SPIDER_ANALYSER_PATH . '/#log/')) {
+            mkdir(WP_SPIDER_ANALYSER_PATH . '/#log/', 0755);
+        }
+        self::set_up();
 
-            if ( in_array( $s_name, $existing_spiders, true ) ) {
-                $db->update( $table_spider,
-                    array( 'status' => 2, 'bot_type' => $s_bot_type, 'bot_url'  => $s_bot_url),
-                    array( 'name' => $s_name ),
-                    array( '%d', '%s', '%s' ), array( '%s' ) );
+        self::upgrade();
+    }
+
+    public static function plugin_deactivate()
+    {
+        wp_clear_scheduled_hook('wb_wp_spider_trace_cron');
+        wp_clear_scheduled_hook('wp_wb_spider_analyser_cron');
+    }
+
+    public static function wp_wb_spider_analyser_cron()
+    {
+        $cnf = self::cnf();
+        self::txt_log('start do action wp_wb_spider_analyser_cron');
+
+        self::log2db($cnf['log_update'], 0);
+
+        self::check_404();
+
+
+        if (current_time('H') == '01') {
+            self::calc_log(gmdate('Y-m-d', strtotime(current_time('Y-m-d 00:00:00') - 1)));
+            self::sync_wb_spider();
+        }
+
+        self::calc_log();
+
+        self::del_old_log();
+
+        self::set_url_type();
+
+        if (get_option('wb_spider_analyser_ver', 0)) {
+            self::cron_set_spider_post();
+
+            self::scan_post_inner_link();
+            self::update_post_url_num();
+
+            self::check_ip();
+
+            self::set_auto_deny();
+        }
+
+
+        self::txt_log('finnish do action wp_wb_spider_analyser_cron');
+    }
+
+    public static function log2db($type, $force = 0)
+    {
+        self::txt_log('log2db ' . $type, '定时任务');
+        if ($type == 'db') {
+            return;
+        }
+        if ($type == 'hour') {
+            $dir = glob(WP_SPIDER_ANALYSER_PATH . '/#log/log-*.txt');
+            $match = '#log-' . current_time('dH') . '\.txt$#';
+            if ($dir) foreach ($dir as $txt) {
+                if (!$force && preg_match($match, $txt)) {
+                    continue;
+                }
+                self::read_txt($txt);
+            }
+        } else if ($type == 'day') {
+            $dir = glob(WP_SPIDER_ANALYSER_PATH . '/#log/log-*.txt');
+            $match = '#log-' . current_time('d') . '[0-9]{2}\.txt$#';
+            if ($dir) foreach ($dir as $txt) {
+                if (!$force && preg_match($match, $txt)) {
+                    continue;
+                }
+                self::read_txt($txt);
+            }
+        }
+        self::txt_log('log2db end', '定时任务');
+    }
+
+    public static function read_txt($file)
+    {
+        // global $wpdb;
+
+        $f = fopen($file, 'r');
+        if (!$f) {
+            return;
+        }
+        $db = self::db();
+
+        while (!feof($f)) {
+            $line = fgets($f);
+            if (!$line) {
+                break;
+            }
+            $d = json_decode($line, true);
+            //self::txt_log($line);
+            $db->insert($db->prefix . 'wb_spider_log', $d);
+        }
+        fclose($f);
+        // unlink($file);
+        wp_delete_file($file);
+    }
+
+    public static function set_auto_deny()
+    {
+        self::txt_log('set_auto_deny start ', '定时任务');
+        // global $wpdb;
+        $cnf = self::cnf();
+        if (empty($cnf['auto_deny'])) {
+            return;
+        }
+        $db = self::db();
+
+        $t = $db->prefix . 'wb_spider_ip';
+        $db->query("UPDATE $t SET status=16 WHERE status = 2");
+        self::txt_log('set_auto_deny end ', '定时任务');
+    }
+
+    public static function check_ip()
+    {
+        self::txt_log('check_ip start ', '定时任务');
+
+        // global $wpdb;
+
+        $db = self::db();
+        //status[2=>可疑ip,1=>正常，3=>检测中,4=>禁止]
+        $t = $db->prefix . 'wb_spider_ip';
+        $t_log = $db->prefix . 'wb_spider_log';
+
+        //SELECT DISTINCT visit_ip FROM `wp_wb_spider_log` WHERE
+        $sql = "INSERT INTO $t(ip,name) ";
+        $sql .= "SELECT DISTINCT a.visit_ip,a.spider FROM $t_log a WHERE a.visit_date > DATE_ADD(a.visit_date,INTERVAL -1 DAY)";
+        $sql .= " AND NOT EXISTS(SELECT b.id FROM $t b WHERE b.ip=a.visit_ip AND b.name=a.spider)";
+
+        $db->query($sql);
+
+        $col = $db->get_col("SELECT DISTINCT ip FROM $t WHERE status = 0 LIMIT 1000 ");
+
+
+        $api = 'https://www.wbolt.com/wb-api/v1/spider/ip';
+        $arg = array(
+            'timeout'   => 10,
+            'sslverify' => false,
+            'body' => array('ver' => get_option('wb_spider_analyser_ver', 0), 'host' => $_SERVER['HTTP_HOST'], 'ip' => implode(',', $col)),
+            'headers' => array('referer' => home_url()),
+        );
+        $http = wp_remote_post($api, $arg);
+        $body = wp_remote_retrieve_body($http);
+
+        if (is_wp_error($http)) {
+            self::txt_log($http->get_error_message());
+            return;
+        }
+        $code = wp_remote_retrieve_response_code($http);
+        if ($code !== 200) {
+            return;
+        }
+        self::txt_log($body);
+        if ($body && preg_match('#^[0-9,]+$#', trim($body))) {
+            $exp = explode(',', $body);
+            foreach ($col as $k => $ip) {
+                if (isset($exp[$k]) && $exp[$k]) {
+                    $db->query($db->prepare("UPDATE $t SET status=%d WHERE ip=%s", $exp[$k], $ip));
+                }
+            }
+        }
+        self::txt_log('check_ip end ', '定时任务');
+    }
+
+    public static function update_post_url_num()
+    {
+        // global $wpdb;
+        self::txt_log('update_post_url_num start ', '定时任务');
+        $db = self::db();
+
+        $prefix = $db->prefix;
+
+        $sql = "UPDATE `{$prefix}wb_spider_post` a,(SELECT COUNT(1) num, post_id FROM `{$prefix}wb_spider_post_link` ";
+        $sql .= "WHERE link_url_md5 <> 'e10adc3949ba59abbe56e057f20f883e' GROUP BY post_id ) AS b";
+        $sql .= " SET a.url_out = b.num  WHERE a.post_id=b.post_id";
+        $db->query($sql);
+
+
+        $sql = "UPDATE `{$prefix}wb_spider_post` a,(SELECT COUNT(1) num, link_url_md5 FROM `{$prefix}wb_spider_post_link` ";
+        $sql .= " WHERE link_url_md5 <> 'e10adc3949ba59abbe56e057f20f883e' GROUP BY link_url_md5 ) AS b ";
+        $sql .= " SET a.url_in = b.num  WHERE a.url_md5=b.link_url_md5";
+
+        $db->query($sql);
+        self::txt_log('update_post_url_num end ', '定时任务');
+    }
+
+    public static function scan_post_inner_link()
+    {
+        self::txt_log('scan_post_inner_link start ', '定时任务');
+        // global $wpdb;
+        $db = self::db();
+        $error = $db->suppress_errors();
+        $t = $db->prefix . 'wb_spider_post_link';
+        $sql = "SELECT * FROM $db->posts p WHERE p.post_status='publish'";
+        $sql .= " AND NOT EXISTS (SELECT post_id FROM $t a WHERE a.post_id=p.ID) LIMIT 1000";
+        $list = $db->get_results($sql);
+        foreach ($list as $r) {
+            self::post_inner_link($r);
+        }
+        $db->suppress_errors($error);
+        self::txt_log('scan_post_inner_link end ', '定时任务');
+    }
+
+    public static function post_inner_link($post)
+    {
+
+        // global $wpdb;
+        $db = self::db();
+
+        $t = $db->prefix . 'wb_spider_post_link';
+        $db->query($db->prepare("DELETE FROM $t WHERE post_id=%d", $post->ID));
+
+        $num = 0;
+        if (preg_match_all("#href=('|\")(.+?)('|\")#is", $post->post_content, $match)) {
+            //print_r($match[2]);
+            foreach ($match[2] as $url) {
+                $url = str_replace(home_url('/'), '/', $url);
+                if ($url[0] != '/') {
+                    continue;
+                }
+                $query_post = null;
+                $type = self::match_type($url, $query_post);
+                if ($type != 'post') {
+                    continue;
+                }
+                self::txt_log([$type, $url]);
+                $d = ['post_id' => $post->ID, 'link_url_md5' => md5($url), 'link_post_id' => 0];
+                if ($query_post) {
+                    $d['link_post_id'] = $query_post->ID;
+                }
+
+                if ($db->insert($t, $d)) {
+                    $num++;
+                }
+            }
+        }
+        if (!$num) {
+            $d = ['post_id' => $post->ID, 'link_url_md5' => md5('123456'), 'link_post_id' => 0];
+            $db->insert($t, $d);
+        }
+    }
+
+    public static function spider_edit_post($post_id, $post)
+    {
+        // global $wpdb;
+        if (!get_option('wb_spider_analyser_ver', 0)) {
+            return;
+        }
+
+
+        if ($post->post_status != 'publish') {
+            return;
+        }
+        $db = self::db();
+
+        $t = $db->prefix . 'wb_spider_post';
+        $d = array('post_id' => $post_id, 'url_md5' => md5(str_replace(home_url('/'), '/', get_permalink($post))));
+        $error = $db->suppress_errors();
+        if (!$db->insert($t, $d)) {
+            $db->update($t, array('url_md5' => $d['url_md5']), array('post_id' => $post_id));
+        }
+        //更新收录状态
+        $post_id = intval($post_id);
+        $db->query("UPDATE $t a ,$db->postmeta b SET a.status=b.meta_value WHERE a.post_id=$post_id AND a.post_id=b.post_id AND b.meta_key='url_in_baidu'");
+        self::post_inner_link($post);
+        $db->suppress_errors($error);
+    }
+
+    public static function cron_set_spider_post()
+    {
+        self::txt_log('cron_set_spider_post start ', '定时任务');
+        // global $wpdb;
+        $db = self::db();
+        $error = $db->suppress_errors();
+
+        //存量文章入库
+        $t = $db->prefix . 'wb_spider_post';
+        $sql = "INSERT INTO $t(`post_id`,`status`)  ";
+        $sql .= "SELECT a.ID,IFNULL(b.meta_value,0) status FROM $db->posts a LEFT JOIN $db->postmeta b ON a.ID=b.post_id";
+        $sql .= " AND b.meta_key='url_in_baidu' WHERE a.post_status='publish' ";
+        $sql .= " AND NOT EXISTS (SELECT post_id FROM $t c WHERE c.post_id = a.ID )";
+        $db->query($sql);
+
+        //更新文章URL
+        $list = $db->get_results("SELECT * FROM $t WHERE url_md5 IS NULL LIMIT 500");
+        foreach ($list as $r) {
+            $url = str_replace(home_url('/'), '/', get_permalink($r->post_id));
+            $db->update($t, array('url_md5' => md5($url)), array('post_id' => $r->post_id));
+        }
+
+        //更新收录状态
+        $db->query("UPDATE $t a ,$db->postmeta b SET a.status=b.meta_value WHERE a.post_id=b.post_id AND b.meta_key='url_in_baidu'");
+
+        $db->suppress_errors($error);
+        self::txt_log('cron_set_spider_post end ', '定时任务');
+    }
+
+    public static function set_url_type()
+    {
+        // global $wpdb;
+        self::txt_log('set_url_type start ', '定时任务');
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider_log';
+
+        $list = $db->get_results("SELECT url,url_md5 FROM $t WHERE url_type IS NULL ORDER BY id DESC LIMIT 200");
+
+        if ($list) foreach ($list as $r) {
+            self::txt_log('match url ' . $r->url);
+            $result = [];
+            $type = self::match_type($r->url, $result);
+            self::txt_log('match url type [' . $type . ']');
+            if ($type) {
+                self::txt_log('update url type [' . $r->url_md5 . ']');
+                $db->query($db->prepare("UPDATE $t SET url_type=%s WHERE url_md5=%s", $type, $r->url_md5));
+            }
+        }
+        self::txt_log('set_url_type start ', '定时任务');
+    }
+
+    public static function check_404()
+    {
+        self::txt_log('check_404 start', '定时任务');
+        // global $wpdb;
+        $db = self::db();
+        $max_id = get_option('sp_an_max_id', 0);
+
+        $t = $db->prefix . 'wb_spider_log';
+        $list = $db->get_results("SELECT max(id) max_id,url,url_md5 FROM $t WHERE `code`='404' AND id>$max_id GROUP BY url_md5 ORDER BY max_id ASC LIMIT 500");
+
+
+        foreach ($list as $r) {
+            $url = home_url($r->url);
+            $http = wp_remote_head($url);
+            $code = wp_remote_retrieve_response_code($http);
+            if ($code) {
+                $db->query($db->prepare("UPDATE $t SET `code`=%s WHERE url_md5 =%s ", $code, $r->url_md5));
+                $max_id = $r->max_id;
+            }
+        }
+        update_option('sp_an_max_id', $max_id, false);
+        self::txt_log('check_404 end', '定时任务');
+    }
+
+    public static function del_old_log()
+    {
+        // global $wpdb;
+        self::txt_log('del_old_log start ', '定时任务');
+        $cnf = self::cnf();
+        $month = intval($cnf['log_keep']);
+        if (!$month) {
+            $month = 2;
+        }
+
+
+        $time_str = '-' . $month . ' month';
+        if ($month == 1) {
+            $time_str = '-7 day';
+        } else if ($month == 2) {
+            $time_str = '-1 month';
+        }
+
+        if ($month > 12) {
+            return;
+        }
+
+        $db = self::db();
+
+        $t = $db->prefix . 'wb_spider_log';
+
+        $ymd = gmdate('Y-m-d', strtotime($time_str));
+
+        $db->query("DELETE FROM $t WHERE DATE_FORMAT(visit_date,'%Y-%m-%d') < '$ymd' ");
+
+        self::txt_log('del_old_log end ', '定时任务');
+    }
+
+    public static function calc_all_log()
+    {
+        // global $wpdb;
+
+
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider_log';
+
+        $cols = $db->get_col("SELECT DISTINCT DATE_FORMAT(visit_date,'%Y-%m-%d') FROM $t ");
+
+
+        if ($cols) foreach ($cols as $ymd) {
+            self::calc_log($ymd);
+        }
+    }
+
+    public static function calc_log($ymd = null)
+    {
+
+        self::txt_log('calc_log start ' . $ymd, '定时任务');
+
+        //global $wpdb;
+
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider';
+        $t_log = $t . '_log';
+        $t_sum = $t . '_sum';
+        $t_visit = $t . '_visit';
+        if (!$ymd) {
+            $ymd = current_time('Y-m-d');
+        }
+
+        $num = $db->get_var("SELECT COUNT(1) AS num FROM $t_log a WHERE NOT EXISTS(SELECT id FROM $t b WHERE a.spider=b.name)");
+        if ($num > 0) {
+            //new spider
+            $db->query("INSERT INTO $t(name) SELECT DISTINCT spider FROM $t_log a WHERE NOT EXISTS(SELECT id FROM $t b WHERE a.spider=b.name)");
+        }
+
+
+        $list = $db->get_results("SELECT id,name FROM $t ");
+        $spiders = [];
+        foreach ($list as $r) {
+            $spiders[$r->name] = $r->id;
+        }
+
+        //spider
+
+        $sql = "SELECT COUNT(1) num,DATE_FORMAT(a.visit_date,'%Y%m%d%H') ymdh,MIN(a.visit_date) visit_date,a.spider,b.id AS spider_id FROM $t_log a,$t b WHERE a.spider=b.name AND DATE_FORMAT(a.visit_date,'%Y-%m-%d')='$ymd' GROUP BY a.spider,ymdh ";
+
+        $list = $db->get_results($sql);
+
+        //foreach($list as $r->r);
+
+        //删除旧数据
+        $db->query("DELETE FROM $t_sum WHERE FROM_UNIXTIME(created,'%Y-%m-%d')='$ymd'");
+
+        foreach ($list as $r) {
+            $d = array(
+                'ymdh' => $r->ymdh,
+                'created' => strtotime($r->visit_date),
+                'spider' => $r->spider_id,
+                'visit_times' => $r->num
+            );
+            $db->insert($t_sum, $d);
+        }
+
+        self::txt_log('calc_log end ', '定时任务');
+
+        return;
+
+        //spider url
+
+        $sql = "SELECT COUNT(1) num,DATE_FORMAT(visit_date,'%Y%m%d') ymdh,MIN(visit_date) visit_date,spider,url FROM $t_log WHERE DATE_FORMAT(visit_date,'%Y-%m-%d')='$ymd' GROUP BY spider,ymdh,url_md5 ";
+
+        $list = $db->get_results($sql);
+
+        //foreach($list as $r->r);
+
+        //删除旧数据
+        $db->query("DELETE FROM $t_visit WHERE FROM_UNIXTIME(created,'%Y-%m-%d')='$ymd'");
+
+        foreach ($list as $r) {
+            $d = array(
+                'ymdh' => $r->ymdh,
+                'created' => strtotime($r->visit_date),
+                'spider' => $spiders[$r->spider],
+                'visit_times' => $r->num,
+                'url_md5' => $r->url_md5,
+                'url' => $r->url
+            );
+            $db->insert($t_visit, $d);
+        }
+    }
+
+    public static function handle()
+    {
+        if (self::$in_log) {
+            return;
+        }
+
+        if (self::$blocked) {
+            return;
+        }
+
+        if (!self::$after_request) {
+            return;
+            /*$headers = headers_list();
+            $is_30x = 0;
+            foreach($headers as $s){
+                if(preg_match('#^location#i',$s)){
+                    $is_30x = 1;
+                    break;
+                }
+            }
+            if($is_30x){
+                return;
+            }
+            */
+        }
+
+        self::$in_log = true;
+
+        $has_error = error_get_last();
+
+        global $wp, $wp_query;
+
+        if ($has_error && self::should_handle_error($has_error)) {
+            $code = '500';
+        } else if (is_404()) {
+            $code = '404';
+        } else {
+            $code = '200';
+        }
+        self::log($code);
+    }
+
+    protected static function should_handle_error($error)
+    {
+        $error_types_to_handle = array(
+            E_ERROR,
+            E_PARSE,
+            E_USER_ERROR,
+            E_COMPILE_ERROR,
+            E_RECOVERABLE_ERROR,
+        );
+
+        if (isset($error['type']) && in_array($error['type'], $error_types_to_handle, true)) {
+            return true;
+        }
+
+        return (bool) apply_filters('wp_should_handle_php_error', false, $error);
+    }
+
+    public static function cnf()
+    {
+        static $option = null;
+        if (!$option) {
+            $option = WP_Spider_Analyser_Admin::cnf();
+        }
+
+        return $option;
+    }
+
+    public static function spider()
+    {
+        try {
+            if (!isset($_SERVER['REQUEST_METHOD']) || $_SERVER['REQUEST_METHOD'] != 'GET') {
+                return null;
+            }
+            if (!isset($_SERVER['HTTP_USER_AGENT']) || empty($_SERVER['HTTP_USER_AGENT'])) {
+                return null;
+            }
+            $agent = $_SERVER['HTTP_USER_AGENT'];
+            $cnf = self::cnf();
+            //forbid
+            do {
+
+                if (preg_match('#spider#i', $agent)) {
+                    break;
+                }
+                if (preg_match('#bot#i', $agent)) {
+                    break;
+                }
+                if (preg_match('#crawler#i', $agent)) {
+                    break;
+                }
+                if (preg_match('#(Daumoa|Yahoo!|Qwantify|Seeker|Elefent|13TABS|iqdb|TinEye|Plukkie|PDFDriveCrawler)#i', $agent)) {
+                    break;
+                }
+
+                $find_match = false;
+                if ($cnf['user_define']) foreach ($cnf['user_define'] as $v) {
+                    if (preg_match('#' . preg_quote($v) . '#i', $agent)) {
+                        $find_match = true;
+                        break;
+                    }
+                }
+                if ($find_match) {
+                    break;
+                }
+
+                return null;
+            } while (0);
+
+            $spider = '';
+
+            //自定义蜘蛛
+            if ($cnf['user_define']) foreach ($cnf['user_define'] as $v) {
+                if (preg_match('#' . preg_quote($v) . '#i', $agent)) {
+                    $spider = $v;
+                    break;
+                }
+            }
+
+            if ($spider) {
+            } else if (preg_match('#sogou (web|inst|news|pic|wap) spider#i', $agent, $spider_match)) {
+                $spider = 'sogou spider';
+            } else if (preg_match('#[a-z0-9\.-]+ spider#i', $agent, $spider_match)) {
+                $spider = $spider_match[0];
+            } else if (preg_match('#[a-z0-9\.-]+ bot#i', $agent, $spider_match)) {
+                $spider = $spider_match[0];
+            } else if (preg_match('#[a-z0-9\.-]*spider[a-z0-9]*#i', $agent, $spider_match)) {
+                $spider = $spider_match[0];
+            } else if (preg_match('#[a-z0-9\.-]*bot[a-z0-9]*#i', $agent, $spider_match)) {
+                $spider = $spider_match[0];
+            } else if (preg_match('#[a-z0-9\.-]+ crawler#i', $agent, $spider_match)) {
+                $spider = $spider_match[0];
+            } else if (preg_match('#[a-z0-9\.-]*crawler[a-z0-9]*#i', $agent, $spider_match)) {
+                $spider = $spider_match[0];
+            } else if (preg_match('#(Daumoa|Yahoo!|Qwantify|Seeker|Elefent|13TABS|iqdb|TinEye|Plukkie|PDFDriveCrawler)#i', $agent, $spider_match)) {
+                $spider = $spider_match[0];
+            } else {
+                $spider = 'other';
+            }
+
+            return $spider;
+        } catch (Exception $ex) {
+        }
+        return null;
+    }
+
+    public static function getIp()
+    {
+        if (isset($_SERVER['HTTP_CLIENT_IP']) && $_SERVER['HTTP_CLIENT_IP']) {
+            return $_SERVER['HTTP_CLIENT_IP'];
+        } else if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR']) {
+            return $_SERVER['HTTP_X_FORWARDED_FOR'];
+        } else if (isset($_SERVER['REMOTE_ADDR']) && $_SERVER['REMOTE_ADDR']) {
+            return $_SERVER['REMOTE_ADDR'];
+        }
+        return null;
+    }
+
+    public static function log($status = '')
+    {
+        global $wp_the_query;
+        try {
+            $spider = self::spider();
+            if (!$spider) {
+                return;
+            }
+            $cnf = self::cnf();
+            //$agent = $_SERVER['HTTP_USER_AGENT'];
+            //用户禁用，不记录
+            $skip_list = self::get_skip_spider();
+            if ($skip_list) foreach ($skip_list as $v) {
+                if ($v && preg_match('#^' . preg_quote($v) . '$#i', $spider)) {
+                    return;
+                }
+            }
+
+            $url = $_SERVER['REQUEST_URI'];
+
+            $d = array(
+                'spider' => $spider,
+                'visit_date' => current_time('mysql'),
+                'code' => $status,
+                'visit_ip' => self::getIp(),
+                'url' => $url,
+                'url_md5' => md5($url),
+            );
+
+            $type = null;
+
+            if ($cnf['extral_rule']) foreach ($cnf['extral_rule'] as $r_type => $rule) {
+                if (!$rule) {
+                    continue;
+                }
+
+                $rule = str_replace(array(',', '\\*'), array('|', '.+?'), preg_quote($rule));
+                if (preg_match('#(' . $rule . ')#i', $url)) {
+                    $type = $r_type;
+                    break;
+                }
+            }
+            if (!$type && $cnf['user_rule']) foreach ($cnf['user_rule'] as $r) {
+                if (!$r['rule']) {
+                    continue;
+                }
+                $rule = str_replace(array(',', '\\*'), array('|', '.+?'), preg_quote($r['rule']));
+                if (preg_match('#(' . $rule . ')#i', $url)) {
+                    $type = $r['name'];
+                    break;
+                }
+            }
+
+            //['index','post','page','category','tag','search','author','feed','sitemap','api','other'];
+            if ($type) {
+            } else if (preg_match('#^/sitemap(-[a-z0-9_-]+)?\.xml#i', $d['url'])) {
+                $type = 'sitemap';
+            } else if (preg_match('#wp-admin/admin-ajax\.php#', $d['url'])) {
+                $type = 'api';
+            } else if ($wp_the_query && $wp_the_query instanceof WP_Query) {
+                if ($wp_the_query->is_search()) {
+                    $type = 'search';
+                } else if ($wp_the_query->is_feed()) {
+                    $type = 'feed';
+                } else if ($wp_the_query->is_tag()) {
+                    $type = 'tag';
+                } else if ($wp_the_query->is_author()) {
+                    $type = 'author';
+                } else if ($wp_the_query->is_category() || $wp_the_query->is_archive()) {
+                    $type = 'category';
+                } else if ($wp_the_query->is_singular(array('page'))) {
+                    $type = 'page';
+                } else if ($wp_the_query->is_singular()) {
+                    $type = 'post';
+                } else if ($wp_the_query->is_home() || $wp_the_query->is_front_page()) {
+                    $type = 'index';
+                }
+            }
+
+            if ($type) {
+                $d['url_type'] = $type;
+            }
+
+
+            if ($cnf['log_update'] == 'db') {
+                $db = self::db();
+                $db->insert($db->prefix . 'wb_spider_log', $d);
+            } else {
+                $log_file = WP_SPIDER_ANALYSER_PATH . '/#log/log-' . current_time('dH') . '.txt';
+                error_log(wp_json_encode($d) . "\n", 3, $log_file);
+                //error_log();
+            }
+        } catch (Exception $ex) {
+        }
+    }
+
+    public static function admin_menu_handler()
+    {
+        global $submenu;
+        add_menu_page(
+            _x('蜘蛛分析', '菜单名称', WB_SPA_DM),
+            _x('蜘蛛分析', '菜单名称', WB_SPA_DM),
+            'administrator',
+            'wp_spider_analyser',
+            array(__CLASS__, 'spider_views'), //
+            WP_SPIDER_ANALYSER_URL . 'assets/ico.svg'
+        );
+        $submenu_spa = [
+            [
+                'name' => _x('蜘蛛概况', '菜单名称', WB_SPA_DM),
+                'slug' => 'wp_spider_analyser#/home'
+            ],
+            [
+                'name' => _x('蜘蛛日志', '菜单名称', WB_SPA_DM),
+                'slug' => 'wp_spider_analyser#/log'
+            ],
+            [
+                'name' => _x('蜘蛛列表', '菜单名称', WB_SPA_DM),
+                'slug' => 'wp_spider_analyser#/list'
+            ],
+            [
+                'name' => _x('访问路径', '菜单名称', WB_SPA_DM),
+                'slug' => 'wp_spider_analyser#/path'
+            ],
+            [
+                'name' => _x('文章爬取', '菜单名称', WB_SPA_DM),
+                'slug' => 'wp_spider_analyser#/post'
+            ],
+            [
+                'name' => _x('插件设置', '菜单名称', WB_SPA_DM),
+                'slug' => 'wp_spider_analyser#/setting'
+            ]
+        ];
+        foreach ($submenu_spa as $item) {
+            add_submenu_page('wp_spider_analyser', $item['name'], $item['name'], 'administrator', $item['slug'], array(__CLASS__, 'spider_views'));
+        }
+
+        if (!get_option('wb_spider_analyser_ver', 0)) {
+            add_submenu_page('wp_spider_analyser', _x('升至Pro版', '菜单名称', WB_SPA_DM), '<span style="color: #FCB214;">' . _x('升至Pro版', '菜单名称', WB_SPA_DM) . '</span>', 'administrator', "https://www.wbolt.com/plugins/spider-analyser' target='_blank'");
+        }
+
+        unset($submenu['wp_spider_analyser'][0]);
+    }
+
+    public static function actionLinks($links, $file)
+    {
+
+        //print_r([$file]);
+        if (!preg_match('#spider-analyser/#', $file)) {
+            return $links;
+        }
+        if (!get_option('wb_spider_analyser_ver', 0)) {
+            $a_link = '<a href="https://www.wbolt.com/plugins/spider-analyser" target="_blank"><span style="color: #FCB214;">' . _x('升至Pro版', 'link', WB_SPA_DM) . '</span></a>';
+            array_unshift($links, $a_link);
+        }
+        $a_link = '<a href="' . menu_page_url('wp_spider_analyser', false) . '#/setting">' . _x('设置', 'link', WB_SPA_DM) . '</a>';
+        array_unshift($links, $a_link);
+
+
+
+        return $links;
+    }
+
+    public static function update_spider($spider)
+    {
+        $api = 'https://www.wbolt.com/wb-api/v1/spider/info';
+        $arg = array(
+            'timeout'   => 1,
+            'blocking'  => false,
+            'sslverify' => false,
+            'body' => array('spider' => wp_json_encode($spider)),
+            'headers' => array('referer' => home_url()),
+        );
+        wp_remote_post($api, $arg);
+    }
+
+    public static function spider_views()
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+        // global $wpdb;
+
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider';
+        $t_log = $t . '_log';
+
+        $num = $db->get_var("SELECT COUNT(1) AS num FROM $t_log a WHERE NOT EXISTS(SELECT id FROM $t b WHERE a.spider=b.name)");
+        if ($num > 0) {
+            $db->query("INSERT INTO $t(name) SELECT DISTINCT spider FROM $t_log a WHERE NOT EXISTS(SELECT id FROM $t b WHERE a.spider=b.name)");
+        }
+
+
+        $time = get_option('sync_wb_spider', 0);
+
+        if (time() > $time) {
+            update_option('sync_wb_spider', time() + 86400);
+            self::sync_wb_spider();
+        }
+
+
+        echo '<div id="app"></div>';
+    }
+
+
+    public static function spider_path()
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
+        // global $wpdb;
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider_log';
+        $spider = $db->get_col("SELECT DISTINCT spider FROM $t");
+        $code = $db->get_col("SELECT DISTINCT code FROM $t");
+        $url_types = WP_Spider_Analyser_Admin::url_types();
+        $cnf = self::cnf();
+        if ($cnf['user_rule']) foreach ($cnf['user_rule'] as $r) {
+            $url_types[$r['name']] = $r['name'];
+        }
+
+        $res['spider'] = $spider;
+        $res['code'] = $code;
+        $res['url_types'] = $url_types;
+        $res['day'] = array(
+            array(
+                'value' => '-1',
+                'label' => _x('所有时间', '筛选选项', WB_SPA_DM)
+            ),
+            array(
+                'value' => '0',
+                'label' => _x('今天', '筛选选项', WB_SPA_DM)
+            ),
+            array(
+                'value' => '7',
+                'label' => _x('近7天', '筛选选项', WB_SPA_DM)
+            ),
+            array(
+                'value' => '30',
+                'label' => _x('近30天', '筛选选项', WB_SPA_DM)
+            )
+        );
+
+        return $res;
+    }
+
+    public static function spider_log()
+    {
+        $res = array();
+        // global $wpdb;
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider_log';
+        $t_s = $db->prefix . 'wb_spider';
+        $spider = $db->get_col("SELECT DISTINCT spider FROM $t");
+        $code = $db->get_col("SELECT DISTINCT code FROM $t");
+        $type = $db->get_col("SELECT DISTINCT bot_type FROM $t_s WHERE bot_type <> ''");
+        $res['spider'] = $spider;
+        $res['code'] = $code;
+        $res['type'] = $type;
+
+        $res['day'] = array(
+            array(
+                'value' => '-1',
+                'label' => _x('所有时间', '筛选选项', WB_SPA_DM)
+            ),
+            array(
+                'value' => '0',
+                'label' => _x('今天', '筛选选项', WB_SPA_DM)
+            ),
+            array(
+                'value' => '7',
+                'label' => _x('近7天', '筛选选项', WB_SPA_DM)
+            ),
+            array(
+                'value' => '30',
+                'label' => _x('近30天', '筛选选项', WB_SPA_DM)
+            )
+        );
+
+        return $res;
+    }
+
+    /**
+     * 列表筛选选项
+     *
+     */
+    public static function spider_list_stop()
+    {
+        $res = array();
+
+        $res['type'] = [
+            _x('全部', 'spider type', WB_SPA_DM),
+            _x('名称', 'spider type', WB_SPA_DM),
+            _x('IP', 'spider type', WB_SPA_DM),
+            _x('IP段', 'spider type', WB_SPA_DM),
+            _x('名称及IP', 'spider type', WB_SPA_DM),
+            _x('自定义', 'spider type', WB_SPA_DM)
+        ];
+        $res['path'] = [
+            '4' => _x('未知', 'spider path', WB_SPA_DM),
+            '11' => _x('蜘蛛日志', 'spider path', WB_SPA_DM),
+            '12' => _x('蜘蛛清单', 'spider path', WB_SPA_DM),
+            '13' => _x('蜘蛛IP段', 'spider path', WB_SPA_DM),
+            '14' => _x('疑似伪蜘蛛', 'spider path', WB_SPA_DM),
+            '15' => _x('自定义', 'spider path', WB_SPA_DM),
+            '16' => _x('智能拦截', 'spider path', WB_SPA_DM),
+            '17' => _x('记录管理', 'spider path', WB_SPA_DM)
+        ];
+
+        return $res;
+    }
+
+    public static function get_skip_spider()
+    {
+        // global $wpdb;
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider';
+        return $db->get_col("SELECT `name` FROM $t WHERE `skip` = 1");
+    }
+
+    public static function skip_spider($spider)
+    {
+        // global $wpdb;
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider';
+        $db->query($db->prepare("UPDATE $t SET `skip`=1 WHERE `name`=%s", $spider));
+    }
+
+    public static function sync_wb_spider()
+    {
+        // global $wpdb;
+
+        $db = self::db();
+        $t = $db->prefix . 'wb_spider';
+        $spiders = $db->get_col("SELECT name FROM $t");
+        if (empty($spiders)) {
+            return;
+        }
+
+        $api = 'https://www.wbolt.com/wb-api/v1/spider/info';
+        $param = [
+            'timeout' => 30,
+            'sslverify' => false,
+            'headers' => array('referer' => home_url()),
+            'body' => ['udg' => 1, 'logo' => 1, 'locale' => get_locale()]
+        ];
+        $http = wp_remote_get($api, $param);
+        do {
+            if (is_wp_error($http)) {
+                break;
+            }
+            $body = wp_remote_retrieve_body($http);
+            if (!$body) {
+                break;
+            }
+            $data = json_decode($body, true);
+            if (!$data) {
+                break;
+            }
+            if (!is_array($data)) {
+                break;
+            }
+
+            self::save_spider_info($data['data']);
+
+            $t = $db->prefix . 'wb_spider';
+            $db->query("UPDATE $t set `status` = 1 WHERE `status` = 2");
+            foreach ($data['data'] as $r) {
+                if (!in_array($r['name'], $spiders)) {
+                    continue;
+                }
+                $db->query($db->prepare("UPDATE $t SET `status` = 2,`bot_type` = %s,`bot_url`=%s WHERE name = %s", $r['bot_type'], $r['bot_url'], $r['name']));
+            }
+        } while (0);
+    }
+
+    public static function read_spider_info()
+    {
+        static $data = null;
+
+        if ($data !== null) {
+            return $data;
+        }
+        $locale = get_locale();
+
+        $cache = [];
+        do {
+            $file = WP_SPIDER_ANALYSER_PATH . '/#info/spider_info_' . $locale . '.php';
+            if (file_exists($file)) {
+                $cache = include $file;
+                if (!empty($cache) && is_array($cache)) {
+                    break;
+                }
+            }
+            $file = WP_SPIDER_ANALYSER_PATH . '/spider_info.php';
+            if (file_exists($file)) {
+                $cache = include $file;
+                if (!empty($cache) && is_array($cache)) {
+                    break;
+                }
+            }
+        } while (0);
+        $list = [];
+        if ($cache) {
+            foreach ($cache as $r) {
+                $key = strtolower($r['name']);
+                $list[$key] = $r;
+            }
+        }
+        $data = $list;
+        return $data;
+    }
+
+    public static function save_spider_info($data)
+    {
+        if (empty($data) || !is_array($data)) {
+            return;
+        }
+        if (!is_dir(WP_SPIDER_ANALYSER_PATH . '/#info/')) {
+            mkdir(WP_SPIDER_ANALYSER_PATH . '/#info/', 0755);
+        }
+
+        $locale = get_locale();
+        $content = '<' . '?php' . "\n" . 'return ' . var_export($data, true) . ';';
+        file_put_contents(WP_SPIDER_ANALYSER_PATH . '/#info/spider_info_' . $locale . '.php', $content);
+    }
+
+    public static function db_ver()
+    {
+        return 1.5;
+    }
+
+    public static function set_up()
+    {
+        self::setup_db();
+    }
+
+    public static function setup_db($create_tables = null)
+    {
+
+        // global $wpdb;
+
+
+        $wb_tables = array(
+            'wb_spider',
+            'wb_spider_ip',
+            'wb_spider_log',
+            'wb_spider_post',
+            'wb_spider_post_link',
+            'wb_spider_sum',
+            'wb_spider_visit',
+        );
+        if (!$create_tables && is_array($create_tables)) {
+            $wb_tables = $create_tables;
+        }
+
+        $db = self::db();
+        //数据表
+        $tables = $db->get_col("SHOW TABLES LIKE '" . $db->prefix . "wb_spider%'");
+
+
+        $set_up = array();
+        foreach ($wb_tables as $table) {
+            if (in_array($db->prefix . $table, $tables)) {
+                continue;
+            }
+            $set_up[] = $table;
+        }
+
+        if (empty($set_up)) {
+            return;
+        }
+
+        $sql = file_get_contents(WP_SPIDER_ANALYSER_PATH . '/install/init.sql');
+
+        $charset_collate = $db->get_charset_collate();
+
+
+
+        $sql = str_replace('`wp_wb_', '`' . $db->prefix . 'wb_', $sql);
+        $sql = str_replace('ENGINE=InnoDB', $charset_collate, $sql);
+
+
+
+        $sql_rows = explode('-- row split --', $sql);
+
+        foreach ($sql_rows as $row) {
+
+            if (preg_match('#`' . $db->prefix . '(wb_spider.*?)`\s+\(#', $row, $match)) {
+                if (in_array($match[1], $set_up)) {
+                    $db->query($row);
+                }
+            }
+            //print_r($row);exit();
+        }
+
+        update_option('wb_spider_analyser_db_ver', self::db_ver());
+    }
+
+    public static function upgrade()
+    {
+        // global $wpdb;
+
+
+        $db_ver = get_option('wb_spider_analyser_db_ver');
+        if (!$db_ver) {
+            return;
+        }
+
+        $db = self::db();
+        if (version_compare($db_ver, '1.2') < 0) {
+            $t = $db->prefix . 'wb_spider_log';
+            $sql = $db->get_var('SHOW CREATE TABLE `' . $t . '`', 1);
+            if (!preg_match('#`url_type`#is', $sql)) {
+                $db->query("ALTER TABLE $t ADD `url_type` varchar(32) DEFAULT NULL");
+                $db->query("ALTER TABLE $t ADD INDEX(`url_type`)");
+            }
+            update_option('wb_spider_analyser_db_ver', '1.2');
+        }
+        if (version_compare($db_ver, '1.3') < 0) {
+            self::setup_db(array('wb_spider_ip', 'wb_spider_post', 'wb_spider_post_link'));
+            update_option('wb_spider_analyser_db_ver', '1.3');
+        }
+        if (version_compare($db_ver, '1.4') < 0) {
+            $t = $db->prefix . 'wb_spider';
+            $sql = $db->get_var('SHOW CREATE TABLE `' . $t . '`', 1);
+            if (!preg_match('#`skip`#is', $sql)) {
+                $db->query("ALTER TABLE $t ADD `skip` tinyint(3) UNSIGNED NOT NULL DEFAULT '0'");
+            }
+            if (!preg_match('#`bot_type`#is', $sql)) {
+                $db->query("ALTER TABLE $t ADD `bot_type` varchar(32) DEFAULT NULL");
+                $db->query("ALTER TABLE $t ADD INDEX(`bot_type`)");
+            }
+            if (!preg_match('#`bot_url`#is', $sql)) {
+                $db->query("ALTER TABLE $t ADD `bot_url` varchar(256) DEFAULT NULL");
+            }
+            update_option('wb_spider_analyser_db_ver', '1.4');
+
+            $cnf = WP_Spider_Analyser_Admin::cnf();
+            if (isset($cnf['forbid']) && is_array($cnf['forbid'])) {
+                $t = $db->prefix . 'wb_spider';
+                foreach ($cnf['forbid'] as $v) {
+                    $db->query($db->prepare("UPDATE $t SET `skip` = 1 WHERE `name` = %s", $v));
+                }
+                unset($cnf['forbid']);
+                update_option(WP_Spider_Analyser_Admin::$option, $cnf);
+            }
+
+            self::sync_wb_spider();
+        }
+
+        if (version_compare($db_ver, '1.5') < 0) {
+            self::setup_db(array('wb_spider'));
+            update_option('wb_spider_analyser_db_ver', '1.5');
+        }
+    }
+
+    public static function cache($param, $data = null, $expire = 0, $code = 'json')
+    {
+        $key = md5(wp_json_encode($param));
+        if (!is_dir(WP_SPIDER_ANALYSER_PATH . '/#log/')) {
+            mkdir(WP_SPIDER_ANALYSER_PATH . '/#log/', 0755);
+        }
+        $cache_file = WP_SPIDER_ANALYSER_PATH . '/#log/' . $key . '.php';
+        if (null === $data) {
+            if (file_exists($cache_file)) {
+                return $cache_file;
+            }
+            return false;
+        }
+        if (is_array($data)) {
+            $data = wp_json_encode($data);
+        }
+        $expired = time() +  $expire;
+        $content = '<' . '?php if(time()>' . $expired . '){return;}';
+        if ($code) {
+            if ($code == 'json') {
+                $code = 'header("content-type:text/json;");';
+            }
+            $content .= $code;
+        }
+        $content .= '?' . '>' . $data . '<' . '?php exit();';
+        file_put_contents($cache_file, $content);
+    }
+
+    public static function clear_cache()
+    {
+        $cache_file = WP_SPIDER_ANALYSER_PATH . '/#log/*.php';
+        $files = glob($cache_file);
+        if ($files && is_array($files)) {
+            foreach ($files as $file) {
+                // unlink($file);
+                wp_delete_file($file);
             }
         }
     }
 
-    /**
-     * Manage cached data.
-     *
-     * @param string|array $param Parameters to create the cache key.
-     * @param mixed|null $data_to_cache Data to cache. If null, attempts to read from cache.
-     * @param int $cache_duration Duration in seconds for how long to cache the data.
-     * @param string $response_type Expected response type (e.g., 'json'). Currently not strictly used for header setting in this version.
-     * @return string|bool Path to cache file if reading and cache exists, true on successful write, false on failure.
-     */
-    public static function cache( $param, $data_to_cache = null, $cache_duration = 0, $response_type = 'json' ) {
-        if (!is_array($param)) $param = array($param);
 
-        $cache_key = md5( wp_json_encode( $param ) );
-        $log_dir = WP_SPIDER_ANALYSER_PATH . '/#log/';
-
-        if ( ! is_dir( $log_dir ) ) {
-            if ( ! wp_mkdir_p( $log_dir ) ) { error_log("Spider Analyser Cache: Failed to create directory " . $log_dir); return false; }
-        }
-        $cache_file_path = $log_dir . $cache_key . '.php';
-
-        if ( null === $data_to_cache ) {
-            if ( file_exists( $cache_file_path ) ) return $cache_file_path;
-            return false;
+    public static function localize_ajax_handle()
+    {
+        $locale = get_locale();
+        $cache_key = 'wb_localize_' . $locale . '_' . WB_SPA_DM . '_' . WP_SPIDER_ANALYSER_VERSION;
+        $cache_data = get_transient($cache_key);
+        if ($cache_data) {
+            return $cache_data;
         }
 
-        $json_data_to_cache = (is_array( $data_to_cache ) || is_object( $data_to_cache )) ? wp_json_encode( $data_to_cache ) : $data_to_cache;
-        if (false === $json_data_to_cache && (is_array( $data_to_cache ) || is_object( $data_to_cache ))) { // Check if json_encode failed
-            error_log("Spider Analyser Cache: Failed to encode data to JSON. Key: " . $cache_key); return false;
+        $lang_data = [];
+        if (file_exists(__DIR__ . '/_localize.php')) {
+            include __DIR__ . '/_localize.php';
         }
 
-        $expiration_timestamp = time() + absint( $cache_duration );
+        apply_filters('wb_spa_locales_data', $lang_data);
 
-        $cache_file_content  = "<" . "?php \n";
-        $cache_file_content .= "// Cache generated by Spider Analyser at: " . current_time( 'mysql' ) . " (UTC)\n";
-        $cache_file_content .= "// Expires at timestamp: " . $expiration_timestamp . "\n";
-        $cache_file_content .= "if ( time() > " . $expiration_timestamp . " ) { @unlink(__FILE__); return; } \n";
-        $cache_file_content .= "echo '" . addslashes($json_data_to_cache) . "'; \n";
-        $cache_file_content .= "exit(); \n";
-
-        if (false === file_put_contents( $cache_file_path, $cache_file_content )) {
-            error_log("Spider Analyser Cache: Failed to write to file " . $cache_file_path); return false;
+        $format_data = [];
+        foreach ($lang_data as $k => $v) {
+            $format_data[WBP::set_localize_key($k)] = $v;
         }
-        return true;
+        set_transient($cache_key, $format_data, DAY_IN_SECONDS);
+
+        return $format_data;
     }
-
-    // Other methods like plugin_activate, plugin_deactivate, cnf (moved to admin), etc.
-    // ... (Ensure all necessary methods are present or correctly referenced from WP_Spider_Analyser_Admin)
 }
-?>
-
-[end of classes/spider.class.php]
