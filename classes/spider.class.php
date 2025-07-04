@@ -127,7 +127,6 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
      */
     public static function spider_edit_post($post_id, $post) {
         // This is a stub. Actual logic for handling post edits would go here.
-        // For example, clearing caches related to this post or triggering an analysis.
     }
 
 
@@ -284,7 +283,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         wp_enqueue_script( 'wbs-inline-js' );
 
         $wb_ajax_nonce = wp_create_nonce( 'wp_ajax_wb_spider_analyser' );
-        $options       = static::cnf();
+        $options       = WP_Spider_Analyser_Admin::cnf(); // Correctly call cnf() from Admin class
 
         $prompt_items_file = __DIR__ . '/json/prompt.json';
         $prompt_items      = class_exists( 'WBP' ) && method_exists( 'WBP', 'wb_get_json_fields' ) ? WBP::wb_get_json_fields( basename( $prompt_items_file ), dirname( $prompt_items_file ) . '/' ) : array();
@@ -337,7 +336,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
     public static function match_type($url, &$query = null)
     {
         global $wp_filter, $wp_query;
-        $cnf = static::cnf();
+        $cnf = WP_Spider_Analyser_Admin::cnf();  // Correctly call cnf() from Admin class
 
         $type = null;
         $old_page = null;
@@ -379,7 +378,7 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
             }
             if (empty($parse['path']) || $parse['path'] == '/') { $type = 'index'; break; }
 
-            if ( ! did_action('wp') ) { // Check if main query has run
+            if ( ! did_action('wp') ) {
                 $type = 'other';
                 break;
             }
@@ -1511,8 +1510,8 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         return true;
     }
 
-    // Other methods like plugin_activate, plugin_deactivate, admin_menu_handler, etc.
-    // ... (These methods would be here, ensure they are public static if called statically)
+    // Other methods like plugin_activate, plugin_deactivate, cnf (moved to admin), etc.
+    // ... (Ensure all necessary methods are present or correctly referenced from WP_Spider_Analyser_Admin)
 }
 ?>
 
