@@ -152,6 +152,53 @@ class WP_Spider_Analyser_Admin extends WP_Spider_Analyser_Base {
 		return apply_filters( 'wp_spider_analyser_url_types', $url_types_array );
 	}
 
+    /**
+     * Add admin menu page for the plugin.
+     */
+    public static function admin_menu_handler() {
+        // Example: add_menu_page(...);
+        // This is a stub. Actual implementation would add the menu page.
+        // For now, ensuring the callback is valid.
+        if (function_exists('add_menu_page')) {
+             add_menu_page(
+                __('Spider Analyser', WB_SPA_DM),
+                __('Spider Analyser', WB_SPA_DM),
+                'manage_options',
+                'wp_spider_analyser', // Menu slug
+                array(__CLASS__, 'admin_page_content'), // Callback function for page content
+                'dashicons-search' // Icon
+            );
+        }
+    }
+
+    /**
+     * Callback for rendering the admin page content.
+     * This is a stub and should be implemented to display the actual admin page.
+     */
+    public static function admin_page_content() {
+        // Placeholder for admin page content.
+        // The actual UI is likely rendered by the Vue app.
+        echo '<div class="wrap"><div id="wbs_app_spider_analyser"></div></div>';
+    }
+
+    /**
+     * Add action links to the plugin entry on the plugins page.
+     *
+     * @param array  $links Existing plugin action links.
+     * @param string $plugin_file Path to the plugin file relative to the plugins directory.
+     * @return array Modified plugin action links.
+     */
+    public static function plugin_action_links( $links, $plugin_file_name ) { // Renamed from actionLinks for clarity
+        $this_plugin_base_name = plugin_basename( WP_SPIDER_ANALYSER_BASE_FILE );
+		if ( $plugin_file_name === $this_plugin_base_name ) {
+            // Example: Add a settings link
+            $settings_page_url = admin_url( 'admin.php?page=wp_spider_analyser' ); // Assuming 'wp_spider_analyser' is the menu slug
+            $settings_link = '<a href="' . esc_url( $settings_page_url ) . '">' . esc_html__( 'Settings', WB_SPA_DM ) . '</a>';
+            array_unshift( $links, $settings_link );
+        }
+        return $links;
+    }
+
 	/**
 	 * Get the plugin configuration settings.
 	 * Merges stored options with default values.

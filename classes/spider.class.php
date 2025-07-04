@@ -65,9 +65,9 @@ class WP_Spider_Analyser extends WP_Spider_Analyser_Base
         });
 
         add_action('parse_request', array(__CLASS__, 'parse_request'), 1);
-        add_action('admin_menu', array(__CLASS__, 'admin_menu_handler'));
+        add_action('admin_menu', array('WP_Spider_Analyser_Admin', 'admin_menu_handler')); // Changed to WP_Spider_Analyser_Admin
         add_action('edit_post', array(__CLASS__, 'spider_edit_post'), 500, 2);
-        add_filter('plugin_action_links', array(__CLASS__, 'actionLinks'), 10, 2);
+        add_filter('plugin_action_links', array('WP_Spider_Analyser_Admin', 'plugin_action_links'), 10, 2); // Changed to WP_Spider_Analyser_Admin and method name
         register_shutdown_function(array(__CLASS__, 'handle')); // Correctly registers WP_Spider_Analyser::handle
 
         add_filter('redirect_canonical', function ($redirect_url, $requested_url) {
